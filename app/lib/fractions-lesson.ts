@@ -64,6 +64,27 @@ export function getIncorrectTurn(): TutorTurn {
   };
 }
 
+export function getIncorrectQuarterTurn(): TutorTurn {
+  return {
+    stepId: "incorrect-quarter",
+    status: "awaiting_answer",
+    speech:
+      "Almost! Look carefully — the rectangle is divided into four equal parts this time, not two. We colored just one of those four equal pieces. That makes one quarter.",
+    actions: [
+      { type: "clear" },
+      { type: "writeText", text: "Let's look together", x: 128, y: 78, size: 32, color: "#18334b" },
+      { type: "drawRect", id: "rect-quarter-hint", x: 120, y: 140, width: 280, height: 160, color: "#ffffff" },
+      { type: "splitShape", target: "rect-quarter-hint", parts: 4, direction: "vertical" },
+      { type: "fillSegment", target: "rect-quarter-hint", segment: 1, color: "#ffd36c" },
+      { type: "highlight", x: 120, y: 140, width: 70, height: 160, color: "rgba(255,211,108,0.38)" },
+      { type: "writeText", text: "1 out of 4 = 1/4", x: 148, y: 348, size: 27, color: "#18334b" },
+      { type: "pointer", x: 156, y: 116, label: "💡" },
+    ],
+    question: "Now you try — what do we call one part out of four equal parts?",
+    choices: [choice("quarter", "One quarter", true), choice("half", "One half")],
+  };
+}
+
 export function getCompletedTurn(): TutorTurn {
   return {
     stepId: "completed",

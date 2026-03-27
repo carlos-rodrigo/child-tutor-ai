@@ -1,6 +1,6 @@
 ---
 id: 005
-status: open
+status: done
 depends: [004]
 created: 2026-03-27
 ---
@@ -15,9 +15,9 @@ created: 2026-03-27
 
 ## Acceptance criteria
 
-- [ ] The UI exposes a beta voice input path
-- [ ] Buttons remain available as fallback
-- [ ] Failure states do not break the lesson
+- [x] The UI exposes a beta voice input path
+- [x] Buttons remain available as fallback
+- [x] Failure states do not break the lesson
 
 ## Files
 

@@ -1,6 +1,6 @@
 ---
 id: 003
-status: open
+status: done
 depends: [001]
 created: 2026-03-27
 ---
@@ -15,9 +15,9 @@ created: 2026-03-27
 
 ## Acceptance criteria
 
-- [ ] Streamed tutor text is visible in the UI when available
-- [ ] Fallback JSON behavior still works
-- [ ] No regressions in lesson progression
+- [x] Streamed tutor text is visible in the UI when available
+- [x] Fallback JSON behavior still works
+- [x] No regressions in lesson progression
 
 ## Files
 

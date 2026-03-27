@@ -1,6 +1,6 @@
 import { streamText } from "ai";
 import { openai } from "@ai-sdk/openai";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 
 import { getCompletedTurn, getCorrectTurn, getIncorrectTurn } from "@/lib/fractions-lesson";
 import { TutorTurn } from "@/lib/tutor-types";
@@ -22,10 +22,12 @@ export async function POST(req: NextRequest) {
   const nextTurn = pickNextTurn(stepId, answerId);
 
   if (!process.env.OPENAI_API_KEY) {
-    return NextResponse.json(
-      { turn: nextTurn, speech: nextTurn.speech, fallback: true },
-      { headers: { "x-tutor-turn": JSON.stringify(nextTurn) } }
-    );
+    return new Response(JSON.stringify({ turn: nextTurn, speech: nextTurn.speech, fallback: true }), {
+      headers: {
+        "content-type": "application/json",
+        "x-tutor-turn": JSON.stringify(nextTurn),
+      },
+    });
   }
 
   const result = streamText({
@@ -35,9 +37,22 @@ export async function POST(req: NextRequest) {
     prompt: `Rewrite this tutor line in a warm child-friendly tone while preserving meaning: ${nextTurn.speech}`,
   });
 
-  return result.toDataStreamResponse({
-    getErrorMessage: (error) => (error instanceof Error ? error.message : "Unknown tutor error"),
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    async start(controller) {
+      try {
+        for await (const chunk of result.textStream) {
+          controller.enqueue(encoder.encode(chunk));
+        }
+      } finally {
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(stream, {
     headers: {
+      "content-type": "text/plain; charset=utf-8",
       "x-tutor-turn": JSON.stringify(nextTurn),
     },
   });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { CanvasAction, TutorChoice, TutorSession, TutorTurn } from "@/lib/tutor-types";
 
@@ -98,10 +98,14 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
 
+  // Ref holds the final speech text so the effect reads it once per turn change,
+  // not on every streaming chunk (avoids repeated speak() cancel/restart).
+  const speechRef = useRef("");
+
   useEffect(() => {
     if (!turn || !voiceEnabled) return;
-    speak(streamedSpeech || turn.speech);
-  }, [turn, streamedSpeech, voiceEnabled]);
+    speak(speechRef.current || turn.speech);
+  }, [turn, voiceEnabled]);
 
   async function startSession() {
     setIsLoading(true);
@@ -109,9 +113,11 @@ export default function Home() {
     try {
       const res = await fetch("/api/tutor/start", { method: "POST" });
       const data = await res.json();
+      const initialSpeech = data.turn?.speech || "";
+      speechRef.current = initialSpeech;
       setSession(data.session);
       setTurn(data.turn);
-      setStreamedSpeech(data.turn?.speech || "");
+      setStreamedSpeech(initialSpeech);
     } finally {
       setIsLoading(false);
     }
@@ -134,7 +140,9 @@ export default function Home() {
 
       if (contentType.includes("application/json")) {
         const data = await res.json();
-        setStreamedSpeech(data.speech || nextTurn?.speech || "");
+        const speech = data.speech || nextTurn?.speech || "";
+        speechRef.current = speech;
+        setStreamedSpeech(speech);
       } else if (res.body) {
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
@@ -144,11 +152,17 @@ export default function Home() {
           const { done, value } = await reader.read();
           if (done) break;
           text += decoder.decode(value, { stream: true });
+          // Show speech progressively as chunks arrive
+          setStreamedSpeech(text);
         }
 
-        setStreamedSpeech(text || nextTurn?.speech || "");
+        const finalSpeech = text || nextTurn?.speech || "";
+        speechRef.current = finalSpeech;
+        if (!text) setStreamedSpeech(nextTurn?.speech || "");
       } else {
-        setStreamedSpeech(nextTurn?.speech || "");
+        const speech = nextTurn?.speech || "";
+        speechRef.current = speech;
+        setStreamedSpeech(speech);
       }
 
       if (nextTurn) {

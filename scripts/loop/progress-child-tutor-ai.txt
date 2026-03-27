@@ -47,3 +47,17 @@ Task ID: 002
   - `.filled` class pattern with `::after` is a clean way to add state-dependent decorations
 
 ---
+
+## 2026-03-27 - Add streaming tutor speech rendering in UI
+
+Task ID: 003
+
+- Changed `app/app/api/tutor/respond/route.ts`: replaced `result.toDataStreamResponse()` with a native `ReadableStream` that pipes `result.textStream` as raw `text/plain` bytes — fixes garbled SSE-format output on the client.
+- Changed `app/app/page.tsx`: added `speechRef` (useRef) to hold final speech text; removed `streamedSpeech` from `useEffect` dependency array so `speak()` only fires once per turn (not on each streaming chunk); added progressive `setStreamedSpeech(text)` inside the read loop so speech appears in the UI as it streams in.
+- Fallback JSON path (no API key) unchanged in behavior; updated to set `speechRef.current` for consistency.
+- Build passes: `cd app && npm run build` ✅
+- **Learnings for future iterations:**
+  - AI SDK `toDataStreamResponse()` sends SSE-format bytes (`0:"chunk"`), not raw text — always use `result.textStream` for plain-text streaming to non-SDK clients.
+  - Decouple display state from speech trigger: use a `useRef` to hold the final text and remove the display-state from effect deps to avoid repeated `speak()` calls per chunk.
+
+---

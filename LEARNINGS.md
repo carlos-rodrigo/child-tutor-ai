@@ -12,6 +12,20 @@
 **Learning:** Vertical splits use `flex-direction: row` with `width: N%` per segment. Horizontal splits require `flex-direction: column` with `height: N%` per segment. The `CanvasRect` `flexDirection` style must be set dynamically based on `splits.direction`.
 **Applies to:** Any future extension of the canvas split/segment system.
 
+## Streaming: AI SDK toDataStreamResponse sends SSE-format bytes, not plain text
+
+**Date:** 2026-03-27
+**Context:** Task 003 — adding progressive streaming speech to the tutor UI.
+**Learning:** `result.toDataStreamResponse()` from the Vercel AI SDK streams SSE-format chunks like `0:"Hello"` — not raw text. If the client reads bytes directly with a `TextDecoder`, it sees garbled output including the format prefix. Fix: use `result.textStream` (an async iterable of plain strings) and pipe it through a native `ReadableStream` returning `text/plain` content. The client can then safely decode raw bytes to get clean speech text.
+**Applies to:** Any AI SDK streaming endpoint where the client consumes the body directly rather than using the AI SDK client hooks.
+
+## Streaming + React: Separate display state from speech trigger using a ref
+
+**Date:** 2026-03-27
+**Context:** Task 003 — progressive speech rendering caused `speak()` to fire on every chunk.
+**Learning:** If `useEffect` depends on `streamedSpeech` and `speak()` is called inside it, every chunk update triggers a new speech utterance (cancels and restarts). Fix: hold the final speech text in a `useRef` (`speechRef.current`) and remove `streamedSpeech` from the effect dependency array. The effect fires once on `turn` change (after streaming is complete), reads `speechRef.current`, and speaks only once. The display state (`streamedSpeech`) can still update progressively without side effects.
+**Applies to:** Any future task combining streamed text display with browser speech synthesis.
+
 ## Frontend Tooling: Next.js 16 effect-state lint rule
 
 **Date:** 2026-03-27

@@ -204,8 +204,11 @@ export default function Home() {
     setIsLoading(true);
     setSelectedAnswerId(null);
     setStreamedSpeech("");
-    // Reset transient voice state; unsupported stays sticky as it's environmental
-    setVoiceState((s) => (s === "denied" ? "idle" : s));
+    // Reset transient voice state on restart:
+    //   - "unsupported" is environmental — stays sticky
+    //   - "listening" can be stuck if user triggered mic then hit restart — clear it
+    //   - "denied" — let them retry; permission dialogs may re-prompt in some browsers
+    setVoiceState((s) => (s === "unsupported" ? "unsupported" : "idle"));
 
     try {
       const res = await fetch("/api/tutor/start", { method: "POST" });
@@ -289,6 +292,7 @@ export default function Home() {
 
   const scene = turn ? buildScene(turn.actions) : emptyScene;
   const choices = turn?.choices ?? [];
+  const isCompleted = turn?.stepId === "completed";
   const progress = turn ? progressMap[turn.stepId] ?? 10 : 0;
   // While submitting an answer and waiting for the server, show a gentle thinking
   // placeholder instead of stale speech from the previous turn
@@ -373,7 +377,25 @@ export default function Home() {
             <h3>{turn?.question ?? "Press start, then choose answers as you go."}</h3>
 
             <div className="choices-grid">
-              {choices.length ? (
+              {isCompleted ? (
+                <div className="completion-panel">
+                  <div className="celebration-trophy" aria-hidden="true">🏆</div>
+                  <h4 className="celebration-title">Lesson complete!</h4>
+                  <div className="lesson-summary">
+                    <div className="summary-fact">
+                      <span className="fraction-chip">½</span>
+                      <span>One out of <strong>two</strong> equal parts</span>
+                    </div>
+                    <div className="summary-fact">
+                      <span className="fraction-chip">¼</span>
+                      <span>One out of <strong>four</strong> equal parts</span>
+                    </div>
+                  </div>
+                  <button className="replay-cta" onClick={startSession} disabled={isLoading}>
+                    {isLoading ? "Starting…" : "Try again ✦"}
+                  </button>
+                </div>
+              ) : choices.length ? (
                 choices.map((choice, index) => (
                   <button
                     key={choice.id}
@@ -388,12 +410,8 @@ export default function Home() {
                 ))
               ) : (
                 <div className="completion-card">
-                  <strong>{session ? "Nice work, explorer." : "Ready when you are."}</strong>
-                  <span>
-                    {session
-                      ? "You finished this fractions round with the tutor."
-                      : "Start the lesson to hear the tutor and watch the board come alive."}
-                  </span>
+                  <strong>Ready when you are.</strong>
+                  <span>Start the lesson to hear the tutor and watch the board come alive.</span>
                 </div>
               )}
             </div>

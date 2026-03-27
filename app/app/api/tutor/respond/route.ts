@@ -2,15 +2,15 @@ import { streamText } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { NextRequest } from "next/server";
 
-import { getCompletedTurn, getCorrectTurn, getIncorrectTurn } from "@/lib/fractions-lesson";
+import { getCompletedTurn, getCorrectTurn, getIncorrectQuarterTurn, getIncorrectTurn } from "@/lib/fractions-lesson";
 import { TutorTurn } from "@/lib/tutor-types";
 
 function pickNextTurn(stepId: string, answerId?: string): TutorTurn {
   if (stepId === "intro" || stepId === "incorrect") {
     return answerId === "half" ? getCorrectTurn() : getIncorrectTurn();
   }
-  if (stepId === "correct") {
-    return answerId === "quarter" ? getCompletedTurn() : getCorrectTurn();
+  if (stepId === "correct" || stepId === "incorrect-quarter") {
+    return answerId === "quarter" ? getCompletedTurn() : getIncorrectQuarterTurn();
   }
   return getCompletedTurn();
 }

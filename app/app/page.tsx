@@ -31,8 +31,9 @@ const emptyScene: CanvasScene = { rects: [], circles: [], texts: [], highlights:
 
 const progressMap: Record<string, number> = {
   intro: 25,
-  correct: 60,
-  incorrect: 45,
+  incorrect: 40,
+  correct: 65,
+  "incorrect-quarter": 75,
   completed: 100,
 };
 
@@ -97,6 +98,8 @@ export default function Home() {
   const [streamedSpeech, setStreamedSpeech] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
+  // Tracks which answer the child just selected, cleared when next turn arrives
+  const [selectedAnswerId, setSelectedAnswerId] = useState<string | null>(null);
 
   // Ref holds the final speech text so the effect reads it once per turn change,
   // not on every streaming chunk (avoids repeated speak() cancel/restart).
@@ -109,6 +112,8 @@ export default function Home() {
 
   async function startSession() {
     setIsLoading(true);
+    setSelectedAnswerId(null);
+    setStreamedSpeech("");
 
     try {
       const res = await fetch("/api/tutor/start", { method: "POST" });
@@ -125,7 +130,13 @@ export default function Home() {
 
   async function answer(choice: TutorChoice) {
     if (!turn) return;
+
+    // Record which answer the child tapped so the button can show a "selected" style
+    setSelectedAnswerId(choice.id);
     setIsLoading(true);
+    // Clear speech immediately so the tutor panel shows a thinking ellipsis while
+    // the request is in flight — avoids stale speech from the old turn lingering
+    setStreamedSpeech("");
 
     try {
       const res = await fetch("/api/tutor/respond", {
@@ -137,6 +148,16 @@ export default function Home() {
       const headerTurn = res.headers.get("x-tutor-turn");
       const nextTurn = headerTurn ? (JSON.parse(headerTurn) as TutorTurn) : null;
       const contentType = res.headers.get("content-type") || "";
+
+      // Apply the next turn (canvas scene + question) as soon as response headers
+      // arrive — the canvas should update immediately, not after speech streaming
+      if (nextTurn) {
+        setTurn(nextTurn);
+        setSelectedAnswerId(null);
+        setSession((current) =>
+          current ? { ...current, stepId: nextTurn.stepId, status: nextTurn.status, lastTurn: nextTurn } : current
+        );
+      }
 
       if (contentType.includes("application/json")) {
         const data = await res.json();
@@ -164,22 +185,21 @@ export default function Home() {
         speechRef.current = speech;
         setStreamedSpeech(speech);
       }
-
-      if (nextTurn) {
-        setTurn(nextTurn);
-        setSession((current) =>
-          current ? { ...current, stepId: nextTurn.stepId, status: nextTurn.status, lastTurn: nextTurn } : current
-        );
-      }
     } finally {
       setIsLoading(false);
+      setSelectedAnswerId(null);
     }
   }
 
   const scene = turn ? buildScene(turn.actions) : emptyScene;
   const choices = turn?.choices ?? [];
   const progress = turn ? progressMap[turn.stepId] ?? 10 : 0;
-  const speechCopy = streamedSpeech || turn?.speech || "Tap start to begin the lesson.";
+  // While submitting an answer and waiting for the server, show a gentle thinking
+  // placeholder instead of stale speech from the previous turn
+  const evaluating = isLoading && selectedAnswerId !== null;
+  const speechCopy = evaluating && !streamedSpeech
+    ? "Thinking…"
+    : streamedSpeech || turn?.speech || "Tap start to begin the lesson.";
 
   return (
     <main className="lesson-shell">
@@ -229,7 +249,7 @@ export default function Home() {
               </div>
             </div>
 
-            <p className="speech-card" aria-live="polite">
+            <p className={`speech-card${evaluating && !streamedSpeech ? " thinking" : ""}`} aria-live="polite">
               {speechCopy}
             </p>
 
@@ -261,11 +281,12 @@ export default function Home() {
                 choices.map((choice, index) => (
                   <button
                     key={choice.id}
-                    className={`choice-card choice-${index + 1}`}
+                    className={`choice-card choice-${index + 1}${selectedAnswerId === choice.id ? " selected" : ""}`}
                     onClick={() => answer(choice)}
                     disabled={isLoading}
+                    aria-pressed={selectedAnswerId === choice.id}
                   >
-                    <span className="choice-star">✦</span>
+                    <span className="choice-star">{selectedAnswerId === choice.id ? "⟳" : "✦"}</span>
                     <span>{choice.label}</span>
                   </button>
                 ))

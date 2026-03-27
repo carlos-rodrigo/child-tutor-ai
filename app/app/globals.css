@@ -421,7 +421,6 @@ button {
   }
   50% {
     opacity: 1;
-    box-shadow: 0 0 14px rgba(22, 50, 74, 0.07);
   }
 }
 

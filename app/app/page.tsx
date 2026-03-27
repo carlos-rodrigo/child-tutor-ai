@@ -167,6 +167,8 @@ export default function Home() {
     recognition.onresult = (event: SpeechRecognitionEvent) => {
       const transcript = event.results[0][0].transcript.toLowerCase().trim();
       setVoiceState("idle");
+      // Guard: empty transcript would match everything via label.includes("") → skip
+      if (!transcript) return;
       // Match transcript against available choices — partial or full label match
       const matched = choices.find(
         (c) => transcript.includes(c.label.toLowerCase()) || c.label.toLowerCase().includes(transcript)

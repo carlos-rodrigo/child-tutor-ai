@@ -411,6 +411,8 @@ button {
   box-shadow: 0 8px 20px rgba(141, 224, 199, 0.38);
   transition: transform 120ms ease, box-shadow 120ms ease;
   letter-spacing: -0.01em;
+  /* Hint the compositor for the hover transform — avoids paint on mouse-over */
+  will-change: transform;
 }
 
 .replay-cta:hover:not(:disabled) {

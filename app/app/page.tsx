@@ -146,16 +146,20 @@ export default function Home() {
       });
 
       const headerTurn = res.headers.get("x-tutor-turn");
-      const nextTurn = headerTurn ? (JSON.parse(headerTurn) as TutorTurn) : null;
+      let nextTurn: TutorTurn | null = null;
+      try {
+        nextTurn = headerTurn ? (JSON.parse(headerTurn) as TutorTurn) : null;
+      } catch {
+        // Malformed header — fall through without canvas update; speech still streams
+      }
       const contentType = res.headers.get("content-type") || "";
 
       // Apply the next turn (canvas scene + question) as soon as response headers
       // arrive — the canvas should update immediately, not after speech streaming
       if (nextTurn) {
         setTurn(nextTurn);
-        setSelectedAnswerId(null);
         setSession((current) =>
-          current ? { ...current, stepId: nextTurn.stepId, status: nextTurn.status, lastTurn: nextTurn } : current
+          current ? { ...current, stepId: nextTurn!.stepId, status: nextTurn!.status, lastTurn: nextTurn! } : current
         );
       }
 
@@ -286,7 +290,7 @@ export default function Home() {
                     disabled={isLoading}
                     aria-pressed={selectedAnswerId === choice.id}
                   >
-                    <span className="choice-star">{selectedAnswerId === choice.id ? "⟳" : "✦"}</span>
+                    <span className="choice-star">{selectedAnswerId === choice.id ? "●" : "✦"}</span>
                     <span>{choice.label}</span>
                   </button>
                 ))

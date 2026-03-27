@@ -4,6 +4,44 @@ import { useEffect, useRef, useState } from "react";
 
 import { CanvasAction, TutorChoice, TutorSession, TutorTurn } from "@/lib/tutor-types";
 
+// Web Speech API — not in all TypeScript lib targets; declare locally to avoid ts-ignore
+interface SpeechRecognitionResult {
+  readonly [index: number]: SpeechRecognitionAlternative;
+}
+interface SpeechRecognitionAlternative {
+  readonly transcript: string;
+}
+interface SpeechRecognitionResultList {
+  readonly [index: number]: SpeechRecognitionResult;
+}
+interface SpeechRecognitionEvent {
+  readonly results: SpeechRecognitionResultList;
+}
+interface SpeechRecognitionErrorEvent {
+  readonly error: string;
+}
+interface ISpeechRecognition {
+  lang: string;
+  interimResults: boolean;
+  maxAlternatives: number;
+  start(): void;
+  onresult: ((event: SpeechRecognitionEvent) => void) | null;
+  onerror: ((event: SpeechRecognitionErrorEvent) => void) | null;
+  onend: (() => void) | null;
+}
+type SpeechRecognitionCtor = new () => ISpeechRecognition;
+
+function getSpeechRecognition(): SpeechRecognitionCtor | null {
+  if (typeof window === "undefined") return null;
+  const w = window as Window & {
+    SpeechRecognition?: SpeechRecognitionCtor;
+    webkitSpeechRecognition?: SpeechRecognitionCtor;
+  };
+  return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
+}
+
+type VoiceState = "idle" | "listening" | "unsupported" | "denied";
+
 type CanvasRect = {
   id: string;
   x: number;
@@ -100,6 +138,8 @@ export default function Home() {
   const [voiceEnabled, setVoiceEnabled] = useState(true);
   // Tracks which answer the child just selected, cleared when next turn arrives
   const [selectedAnswerId, setSelectedAnswerId] = useState<string | null>(null);
+  // Voice input beta — "unsupported" and "denied" are sticky failure states
+  const [voiceState, setVoiceState] = useState<VoiceState>("idle");
 
   // Ref holds the final speech text so the effect reads it once per turn change,
   // not on every streaming chunk (avoids repeated speak() cancel/restart).
@@ -110,10 +150,60 @@ export default function Home() {
     speak(speechRef.current || turn.speech);
   }, [turn, voiceEnabled]);
 
+  function startVoiceInput() {
+    const SpeechRecognition = getSpeechRecognition();
+    if (!SpeechRecognition) {
+      setVoiceState("unsupported");
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = "en-US";
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 3;
+
+    setVoiceState("listening");
+
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
+      const transcript = event.results[0][0].transcript.toLowerCase().trim();
+      setVoiceState("idle");
+      // Match transcript against available choices — partial or full label match
+      const matched = choices.find(
+        (c) => transcript.includes(c.label.toLowerCase()) || c.label.toLowerCase().includes(transcript)
+      );
+      if (matched) {
+        answer(matched);
+      }
+      // No match → silently fall back; buttons remain available
+    };
+
+    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+      if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+        setVoiceState("denied");
+      } else {
+        // All other errors (network, aborted, etc.) → silent fallback
+        setVoiceState("idle");
+      }
+    };
+
+    recognition.onend = () => {
+      setVoiceState((s) => (s === "listening" ? "idle" : s));
+    };
+
+    try {
+      recognition.start();
+    } catch {
+      // start() can throw if recognition is already active; reset silently
+      setVoiceState("idle");
+    }
+  }
+
   async function startSession() {
     setIsLoading(true);
     setSelectedAnswerId(null);
     setStreamedSpeech("");
+    // Reset transient voice state; unsupported stays sticky as it's environmental
+    setVoiceState((s) => (s === "denied" ? "idle" : s));
 
     try {
       const res = await fetch("/api/tutor/start", { method: "POST" });
@@ -305,6 +395,27 @@ export default function Home() {
                 </div>
               )}
             </div>
+
+            {choices.length > 0 && (
+              <div className="voice-input-row">
+                {voiceState === "unsupported" ? (
+                  <p className="voice-hint">Voice input not available in this browser — use buttons above.</p>
+                ) : voiceState === "denied" ? (
+                  <p className="voice-hint">Microphone access denied — use buttons above.</p>
+                ) : (
+                  <button
+                    className={`mic-button${voiceState === "listening" ? " listening" : ""}`}
+                    onClick={startVoiceInput}
+                    disabled={isLoading || voiceState === "listening"}
+                    aria-label={voiceState === "listening" ? "Listening for your answer…" : "Speak your answer (beta)"}
+                  >
+                    <span className="mic-icon">{voiceState === "listening" ? "🎙️" : "🎤"}</span>
+                    <span>{voiceState === "listening" ? "Listening…" : "Speak answer"}</span>
+                    <span className="beta-badge">beta</span>
+                  </button>
+                )}
+              </div>
+            )}
           </section>
         </aside>
       </section>

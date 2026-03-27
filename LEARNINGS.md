@@ -95,3 +95,17 @@
 **Context:** Task 006 — replay-cta button.
 **Learning:** When a button uses `transition: transform` on hover AND box-shadow (which isn't GPU-composited), add `will-change: transform` to move the element to its own compositor layer. This prevents jank from paint on hover.
 **Applies to:** Any interactive button with `transform` + `box-shadow` transitions.
+
+## Deployment: Vercel CLI token expiry and CDN cache diagnostics
+
+**Date:** 2026-03-27
+**Context:** Task 007 — deploy and verify production. Vercel CLI returned "token not valid".
+**Learning:** Vercel CLI credentials live in `~/.local/share/com.vercel.cli/auth.json`. Tokens expire. Always run `vercel whoami` before a deploy task to confirm auth. If expired, `vercel login` interactively or set `VERCEL_TOKEN` in the shell. Store `VERCEL_TOKEN=<token>` in `~/.profile` or project secrets for unattended deploy tasks. The CDN `age` response header (from `curl -sI`) reliably indicates whether a new deployment has been promoted: `age: 0` = fresh deploy; monotonically increasing `age` = old build still cached.
+**Applies to:** All future deploy tasks across any Vercel-hosted project.
+
+## Deployment: GitHub push triggers Vercel auto-deploy (when integration is healthy)
+
+**Date:** 2026-03-27
+**Context:** Vercel CLI unavailable; pushed to main to rely on GitHub integration.
+**Learning:** Vercel GitHub integration auto-deploys on push to the production branch (usually `main`). This is the fallback when CLI tokens are stale. The integration requires a healthy webhook — check Vercel dashboard → Project → Settings → Git if pushes don't trigger builds.
+**Applies to:** Any project with Vercel GitHub integration set up.

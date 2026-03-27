@@ -10,7 +10,7 @@ Started: 2026-03-27
 - [x] 004 - Improve lesson flow and state transitions
 - [x] 005 - Add voice input beta with safe fallback
 - [x] 006 - Polish completion state and replay flow
-- [ ] 007 - Deploy and verify production demo
+- [x] 007 - Deploy and verify production demo
 
 ## Patterns Discovered
 

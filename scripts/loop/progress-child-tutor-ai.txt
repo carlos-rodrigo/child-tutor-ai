@@ -124,3 +124,20 @@ Task ID: 006
   - `will-change: transform` on interactive buttons with hover transforms avoids compositor surprises
 
 ---
+
+## 2026-03-27 - Deploy and verify production demo
+
+Task ID: 007
+
+- Ran `npm run lint` — zero errors
+- Ran `npm run build` — Next.js 16 production build clean (6/6 pages, TypeScript passing, Turbopack compiled in 1145ms)
+- Merged `feat/child-tutor-ai-task-001` (15 commits, tasks 001–006) into `main`
+- Pushed `main` to `origin/main` (SHA `9278339`)
+- Live site `https://child-tutor-ai.vercel.app/` returns HTTP 200
+- Vercel CLI token expired — direct CLI deploy not possible. Vercel GitHub integration auto-deploy triggered by push to main; confirm deployment in Vercel dashboard
+- **Learnings for future iterations:**
+  - `vercel whoami` before any deploy task to catch expired tokens early
+  - `curl -sI <url> | grep age` is a reliable CDN freshness indicator — `age: 0` = new deploy live
+  - Store `VERCEL_TOKEN` in shell profile or project secrets for unattended deploys
+
+---

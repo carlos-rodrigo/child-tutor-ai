@@ -4,7 +4,15 @@ import { useEffect, useMemo, useState } from "react";
 
 import { CanvasAction, TutorChoice, TutorSession, TutorTurn } from "@/lib/tutor-types";
 
-type CanvasRect = { id: string; x: number; y: number; width: number; height: number; color?: string; splits?: { parts: number; direction: "vertical" | "horizontal" } };
+type CanvasRect = {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  color?: string;
+  splits?: { parts: number; direction: "vertical" | "horizontal" };
+};
 type CanvasCircle = { id: string; x: number; y: number; radius: number; color?: string };
 type CanvasText = { text: string; x: number; y: number; size?: number; color?: string };
 type CanvasHighlight = { x: number; y: number; width: number; height: number; color?: string };
@@ -21,12 +29,20 @@ type CanvasScene = {
 
 const emptyScene: CanvasScene = { rects: [], circles: [], texts: [], highlights: [], pointers: [], fills: [] };
 
+const progressMap: Record<string, number> = {
+  intro: 25,
+  correct: 60,
+  incorrect: 45,
+  completed: 100,
+};
+
 export default function Home() {
   const [session, setSession] = useState<TutorSession | null>(null);
   const [turn, setTurn] = useState<TutorTurn | null>(null);
   const [scene, setScene] = useState<CanvasScene>(emptyScene);
   const [streamedSpeech, setStreamedSpeech] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [voiceEnabled, setVoiceEnabled] = useState(true);
 
   useEffect(() => {
     startSession();
@@ -36,14 +52,21 @@ export default function Home() {
     if (!turn) return;
     applyActions(turn.actions);
     setStreamedSpeech(turn.speech);
+    if (voiceEnabled) {
+      speak(turn.speech);
+    }
+  }, [turn, voiceEnabled]);
+
+  function speak(text: string) {
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(turn.speech);
+      const utterance = new SpeechSynthesisUtterance(text);
       utterance.rate = 0.95;
-      utterance.pitch = 1.08;
+      utterance.pitch = 1.12;
+      utterance.volume = 1;
       window.speechSynthesis.speak(utterance);
     }
-  }, [turn]);
+  }
 
   async function startSession() {
     setIsLoading(true);
@@ -85,9 +108,7 @@ export default function Home() {
     if (nextTurn) {
       setTurn(nextTurn);
       setSession((current) =>
-        current
-          ? { ...current, stepId: nextTurn.stepId, status: nextTurn.status, lastTurn: nextTurn }
-          : current
+        current ? { ...current, stepId: nextTurn.stepId, status: nextTurn.status, lastTurn: nextTurn } : current
       );
     }
     setIsLoading(false);
@@ -138,77 +159,111 @@ export default function Home() {
   }
 
   const choices = useMemo(() => turn?.choices ?? [], [turn]);
+  const progress = turn ? progressMap[turn.stepId] ?? 10 : 10;
+  const lessonTitle = turn?.stepId === "completed" ? "Lesson complete" : "Fractions adventure";
 
   return (
     <main className="shell">
-      <section className="hero">
-        <div>
+      <div className="ambient ambient-one" />
+      <div className="ambient ambient-two" />
+
+      <section className="hero-card">
+        <div className="hero-copy-wrap">
           <p className="eyebrow">Child Tutor AI</p>
-          <h1>A tutor that talks and draws.</h1>
+          <h1>A magical notebook that teaches out loud.</h1>
           <p className="hero-copy">
-            Early technical skeleton using Next.js + AI SDK. Fractions lesson, canvas actions, voice playback,
-            and a backend-shaped tutor loop.
+            Voice-first fractions practice for kids: the tutor explains, the notebook draws, and each step feels like
+            a tiny guided lesson instead of a boring edtech form.
           </p>
         </div>
-        <div className="pill-box">
-          <span>Topic: Fractions</span>
-          <span>Status: {session?.status ?? "starting"}</span>
-          <span>Input: Voice + buttons</span>
+
+        <div className="hero-orbit">
+          <div className="mascot-core">½</div>
+          <div className="orbit-chip orbit-a">voice</div>
+          <div className="orbit-chip orbit-b">canvas</div>
+          <div className="orbit-chip orbit-c">practice</div>
         </div>
       </section>
 
-      <section className="lesson-grid">
-        <div className="canvas-panel">
+      <section className="lesson-stage">
+        <div className="canvas-shell">
+          <div className="canvas-topbar">
+            <div>
+              <p className="mini-label">Today’s lesson</p>
+              <h2>{lessonTitle}</h2>
+            </div>
+            <div className="voice-badge">
+              <span className={`pulse ${voiceEnabled ? "on" : "off"}`} />
+              {voiceEnabled ? "Voice on" : "Voice off"}
+            </div>
+          </div>
+
+          <div className="progress-strip">
+            <div className="progress-fill" style={{ width: `${progress}%` }} />
+          </div>
+
           <CanvasView scene={scene} />
         </div>
 
-        <div className="side-panel">
-          <div className="card">
-            <h2>Tutor voice</h2>
-            <p>{streamedSpeech || turn?.speech || "Starting lesson..."}</p>
+        <aside className="control-rail">
+          <section className="panel tutor-panel">
+            <div className="panel-headline">
+              <div className="avatar-bubble">T</div>
+              <div>
+                <p className="mini-label">Tutor says</p>
+                <h3>Warm voice mode</h3>
+              </div>
+            </div>
+
+            <p className="speech-card">{streamedSpeech || turn?.speech || "Starting lesson..."}</p>
+
             <div className="button-row">
-              <button onClick={startSession} className="ghost">Restart</button>
+              <button className="ghost" onClick={startSession} disabled={isLoading}>
+                Restart lesson
+              </button>
               <button
-                onClick={() => {
-                  if (turn?.speech && typeof window !== "undefined" && "speechSynthesis" in window) {
-                    window.speechSynthesis.cancel();
-                    const u = new SpeechSynthesisUtterance(turn.speech);
-                    u.rate = 0.95;
-                    u.pitch = 1.08;
-                    window.speechSynthesis.speak(u);
-                  }
-                }}
                 className="ghost"
+                onClick={() => {
+                  if (turn?.speech) speak(turn.speech);
+                }}
               >
                 Repeat voice
               </button>
+              <button className="ghost" onClick={() => setVoiceEnabled((v) => !v)}>
+                {voiceEnabled ? "Mute tutor" : "Unmute tutor"}
+              </button>
             </div>
-          </div>
+          </section>
 
-          <div className="card">
-            <h2>{turn?.question ?? "Listen to Tutor"}</h2>
-            <div className="choices">
+          <section className="panel question-panel">
+            <p className="mini-label">Your turn</p>
+            <h3>{turn?.question ?? "Listen carefully and get ready."}</h3>
+            <div className="choices-grid">
               {choices.length ? (
-                choices.map((choice) => (
-                  <button key={choice.id} className="choice" onClick={() => answer(choice)} disabled={isLoading}>
-                    {choice.label}
+                choices.map((choice, index) => (
+                  <button key={choice.id} className={`choice-card choice-${index + 1}`} onClick={() => answer(choice)} disabled={isLoading}>
+                    <span className="choice-star">✦</span>
+                    <span>{choice.label}</span>
                   </button>
                 ))
               ) : (
-                <p className="muted">No choices right now. The lesson may be complete.</p>
+                <div className="completion-card">
+                  <strong>Nice work.</strong>
+                  <span>You reached the end of the mini lesson.</span>
+                </div>
               )}
             </div>
-          </div>
+          </section>
 
-          <div className="card muted-card">
-            <h2>Backend contract</h2>
+          <section className="panel tiny-notes">
+            <p className="mini-label">Why this demo matters</p>
             <ul>
-              <li>`POST /api/tutor/start` starts a session</li>
-              <li>`POST /api/tutor/respond` returns the next tutor turn</li>
-              <li>Turns include speech, canvas actions, choices, and session status</li>
+              <li>Canvas-first, not chat-first.</li>
+              <li>Next.js frontend and backend.</li>
+              <li>AI SDK-ready tutor loop with structured actions.</li>
             </ul>
-          </div>
-        </div>
+          </section>
+        </aside>
       </section>
     </main>
   );
@@ -216,24 +271,28 @@ export default function Home() {
 
 function CanvasView({ scene }: { scene: CanvasScene }) {
   return (
-    <div className="board">
+    <div className="board-frame">
       <div className="board-surface">
+        <div className="grid-paper" />
+
         {scene.highlights.map((item, index) => (
           <div
             key={`h-${index}`}
             className="highlight"
-            style={{ left: item.x, top: item.y, width: item.width, height: item.height, background: item.color ?? "rgba(126,215,193,0.25)" }}
+            style={{
+              left: item.x,
+              top: item.y,
+              width: item.width,
+              height: item.height,
+              background: item.color ?? "rgba(126,215,193,0.25)",
+            }}
           />
         ))}
 
         {scene.rects.map((rect) => {
           const fills = scene.fills.filter((fill) => fill.target === rect.id);
           return (
-            <div
-              key={rect.id}
-              className="rect"
-              style={{ left: rect.x, top: rect.y, width: rect.width, height: rect.height }}
-            >
+            <div key={rect.id} className="rect" style={{ left: rect.x, top: rect.y, width: rect.width, height: rect.height }}>
               {rect.splits && rect.splits.direction === "vertical"
                 ? Array.from({ length: rect.splits.parts }).map((_, i) => {
                     const segment = i + 1;

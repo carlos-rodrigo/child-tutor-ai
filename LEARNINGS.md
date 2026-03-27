@@ -32,3 +32,24 @@
 **Context:** Refactoring the lesson shell in `app/app/page.tsx` for child-tutor-ai task 001.
 **Learning:** This repo's Next.js 16 lint setup (`react-hooks/set-state-in-effect`) rejects synchronous state updates triggered from `useEffect`. For UI transforms like canvas scene projection, keep them as pure render-time derivations (e.g., `buildScene`) instead of effect-driven `setState`.
 **Applies to:** Future UI tasks in this project, especially tasks 002/003/004 that evolve lesson rendering and flow state.
+
+## UX: Apply canvas updates before streaming speech
+
+**Date:** 2026-03-27
+**Context:** Task 004 — lesson flow transitions
+**Learning:** When using streaming speech responses, immediately apply structural state (canvas scene, question text) from response headers as soon as they arrive. Only stream the speech text separately. Deferring canvas updates until after speech finishes creates stale-UI while speech plays.
+**Applies to:** Any streaming UX where structural + textual state are separate
+
+## React: Evaluating state with empty-string gate
+
+**Date:** 2026-03-27
+**Context:** Task 004 — thinking placeholder
+**Learning:** `evaluating && !streamedSpeech` accurately gates a "Thinking…" placeholder — it disappears naturally the moment the first streaming chunk arrives, with no explicit clear needed.
+**Applies to:** Any loading state that coexists with streaming content
+
+## Security: Wrap JSON.parse of response headers in try-catch
+
+**Date:** 2026-03-27
+**Context:** Task 004 — x-tutor-turn header parsing
+**Learning:** Even server-set headers can be corrupted by proxies or bugs. Always wrap JSON.parse of any response header in try-catch and swallow gracefully rather than crashing the handler.
+**Applies to:** All fetch-based streaming consumers that parse structured headers

@@ -10,6 +10,9 @@ Feature: child-tutor-ai
 - Keep tutor/canvas contracts centralized in `app/lib/tutor-types.ts`.
 - Keep lesson content isolated from rendering so future topics can swap in cleanly.
 - Maintain AI-SDK-compatible backend shape even when using fallbacks.
+- Apply structural state (canvas scene, turn data) from response headers immediately on headers-received, stream speech separately — never defer canvas update until after speech streaming ends.
+- Wrap JSON.parse of `x-tutor-turn` header in try-catch — proxy corruption can cause malformed JSON.
+- New lesson steps must be added to `progressMap` in `page.tsx` and routed in `pickNextTurn` in `respond/route.ts`.
 
 ---
 
@@ -59,5 +62,26 @@ Task ID: 003
 - **Learnings for future iterations:**
   - AI SDK `toDataStreamResponse()` sends SSE-format bytes (`0:"chunk"`), not raw text — always use `result.textStream` for plain-text streaming to non-SDK clients.
   - Decouple display state from speech trigger: use a `useRef` to hold the final text and remove the display-state from effect deps to avoid repeated `speak()` calls per chunk.
+
+---
+
+## 2026-03-27 - Improve lesson flow and state transitions
+
+Task ID: 004
+
+- Added `getIncorrectQuarterTurn()` in `fractions-lesson.ts` — warm retry turn with highlight and hint for the quarters question so the incorrect branch feels intentional, not like a no-op loop
+- Updated `pickNextTurn` in `respond/route.ts` to route `correct + wrong` → `incorrect-quarter` step (and `incorrect-quarter + wrong` → another retry)
+- Moved `setTurn(nextTurn)` + `setSession(...)` up to immediately after response headers arrive in `page.tsx` — canvas and question now update instantly, speech streams into the already-rendered new scene
+- Added `selectedAnswerId` state to show which choice button was tapped (● icon, scale-down, opacity) during the evaluating phase
+- Added `evaluating` derived state (`isLoading && selectedAnswerId !== null`) to show "Thinking…" in the speech card with a fade pulse animation while awaiting the server
+- Added `.thinkingPulse` CSS animation and `.speech-card.thinking` class (opacity only — GPU-safe)
+- Added `.choice-card.selected` CSS class with scale-down + inset border ring
+- Updated progress map to include `"incorrect-quarter": 75` for accurate lesson progress
+- Wrapped `JSON.parse(headerTurn)` in try-catch for robustness against proxy header corruption
+- Build passes: `cd app && npm run build` ✅
+- **Learnings for future iterations:**
+  - Apply canvas/structural state from response headers immediately; stream speech text separately — never defer DOM structure until after streaming ends
+  - `evaluating && !streamedSpeech` accurately gates a thinking placeholder with no explicit clear logic needed
+  - Always wrap JSON.parse of response headers in try-catch — proxies can corrupt them
 
 ---

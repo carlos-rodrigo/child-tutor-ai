@@ -1,6 +1,6 @@
 ---
 id: 001
-status: open
+status: done
 depends: []
 created: 2026-03-27
 ---
@@ -15,9 +15,9 @@ created: 2026-03-27
 
 ## Acceptance criteria
 
-- [ ] The lesson shell feels cohesive and product-like
-- [ ] The canvas is clearly the primary focus
-- [ ] The tutor voice and answer areas feel integrated into the experience
+- [x] The lesson shell feels cohesive and product-like
+- [x] The canvas is clearly the primary focus
+- [x] The tutor voice and answer areas feel integrated into the experience
 
 ## Files
 
@@ -27,5 +27,9 @@ created: 2026-03-27
 ## Verify
 
 ```bash
-cd app && npm run build
+cd app && npm run lint && npm run build
 ```
+
+## Notes
+
+- Test exception (auditable): no dedicated test harness exists in this app yet (`package.json` has no `test` script). Validation was done via lint + production build for this task.

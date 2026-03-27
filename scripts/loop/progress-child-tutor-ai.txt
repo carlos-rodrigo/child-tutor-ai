@@ -5,9 +5,25 @@ Feature: child-tutor-ai
 
 ## Codebase Patterns
 
+- Next.js 16 lint config in this app rejects synchronous `setState` inside effects; derive render-only state from props/turn data and keep async state transitions inside handlers.
 - App code lives under `app/` (Next.js app router project nested inside repo root).
 - Keep tutor/canvas contracts centralized in `app/lib/tutor-types.ts`.
 - Keep lesson content isolated from rendering so future topics can swap in cleanly.
 - Maintain AI-SDK-compatible backend shape even when using fallbacks.
+
+---
+
+## 2026-03-27 - Refine visual design direction and lesson shell
+
+Task ID: 001
+
+- Implemented a tighter lesson-first shell: compact header, oversized canvas board column, and integrated tutor/answer interaction rail.
+- Reworked `app/app/page.tsx` layout to keep controls in one place and added a clear “Start lesson” entry flow before session creation.
+- Rewrote `app/app/globals.css` to establish the new visual system (glass panels, notebook board styling, integrated answer cards, responsive layout).
+- Ran validation with `cd app && npm run lint && npm run build`.
+- Oracle sub-agent review could not run in this environment (missing provider API key), so a manual quality/security/performance/testing review was performed before finalizing.
+- **Learnings for future iterations:**
+  - Next.js 16 hook linting in this repo is strict about state updates inside effects; keep rendering transforms pure (e.g., `buildScene`) and use handlers for state transitions.
+  - Start/restart flow should remain explicit in the UI to keep shell state deterministic and avoid mount-side effects.
 
 ---

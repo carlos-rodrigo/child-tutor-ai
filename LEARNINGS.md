@@ -74,3 +74,24 @@
 **Context:** Voice input state machine cleanup after recognition ends.
 **Learning:** `onend` fires after both `onresult` and `onerror`. Use a functional state updater `setVoiceState((s) => s === "listening" ? "idle" : s)` in `onend` so it only resets the transient listening state and leaves sticky failure states (denied, unsupported) untouched.
 **Applies to:** Any cleanup that must not overwrite sticky/terminal states.
+
+## UI State: Completion vs Pre-session Branching
+
+**Date:** 2026-03-27
+**Context:** Task 006 — polish completion state and replay flow.
+**Learning:** In a finite lesson where all intermediate turns have choices, `choices.length === 0` conflates "not started" and "completed." Split on a derived `isCompleted` boolean first (`turn?.stepId === "completed"`) before falling back to a generic empty-state card.
+**Applies to:** Any multi-step UI that reuses a single container for pre/post states.
+
+## UI State: Voice Input Reset on Session Restart
+
+**Date:** 2026-03-27
+**Context:** Task 006 — startSession() voice state reset.
+**Learning:** Use `(s === "unsupported" ? "unsupported" : "idle")` to reset voice state on restart. This clears `listening` (can get stuck if mic was active at restart) and `denied` (let them retry), while keeping the environmental `unsupported` state sticky.
+**Applies to:** Any mic/media permission state machines with restart flows.
+
+## CSS: will-change for hover transform buttons
+
+**Date:** 2026-03-27
+**Context:** Task 006 — replay-cta button.
+**Learning:** When a button uses `transition: transform` on hover AND box-shadow (which isn't GPU-composited), add `will-change: transform` to move the element to its own compositor layer. This prevents jank from paint on hover.
+**Applies to:** Any interactive button with `transform` + `box-shadow` transitions.

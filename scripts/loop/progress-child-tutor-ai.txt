@@ -104,3 +104,23 @@ Task ID: 005
   - SpeechRecognition `onend` always fires after `onresult`/`onerror` — use functional state updater to avoid resetting sticky states
 
 ---
+
+---
+
+## 2026-03-27 - Polish completion state and replay flow
+
+Task ID: 006
+
+- Replaced the generic `completion-card` with a dedicated `completion-panel` component that renders only when `turn?.stepId === "completed"`
+- Added bouncing 🏆 trophy (`trophyBounce` keyframes on transform only), "Lesson complete!" heading, two-row fraction summary (`½` / `¼`), and a styled `replay-cta` button with mint gradient
+- Added `completionEntry` keyframe (transform + opacity, GPU-safe) for smooth entry animation
+- Fixed `startSession()` voice state reset: `(s === "unsupported" ? "unsupported" : "idle")` — clears `listening` and `denied`, keeps environmental `unsupported` sticky
+- Added `will-change: transform` to `.replay-cta` to hint the compositor before hover transforms
+- Simplified pre-session fallback: `completion-card` now always shows "Ready when you are." (removed the session-conditional "Nice work, explorer." branch — that state is now fully handled by `completion-panel`)
+- Files changed: `app/app/page.tsx`, `app/app/globals.css`
+- **Learnings for future iterations:**
+  - In a finite choice-based lesson, `isCompleted` guard before `choices.length` gives clean, distinct state branches
+  - Voice state reset pattern: `(s === "unsupported" ? "unsupported" : "idle")`
+  - `will-change: transform` on interactive buttons with hover transforms avoids compositor surprises
+
+---

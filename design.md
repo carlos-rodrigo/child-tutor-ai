@@ -35,12 +35,15 @@ So the first version should use:
 
 Recommended MVP stack:
 - **Frontend:** Next.js
+- **Backend:** Next.js route handlers / server functions
+- **Interaction layer:** Vercel AI SDK
 - **Rendering:** HTML5 Canvas or SVG-based canvas layer
 - **Voice output:** browser speech synthesis or external TTS abstraction
 - **Voice input:** browser speech recognition if usable, with button fallback
 - **State:** in-memory session state for first demo
 
-No backend or persistence required for the first demo.
+The first version should still use a real backend shape, but implemented inside Next.js.
+That means we define session orchestration, tutor turn handling, and structured actions now, without introducing a separate backend service yet.
 
 ## 5. Main UI Areas
 
@@ -81,6 +84,12 @@ Elements:
 
 The lesson can be modeled as a sequence of steps.
 
+The AI SDK should be used as the orchestration bridge between UI and backend:
+- streaming tutor responses
+- structured canvas/tool actions
+- controlled branching after child responses
+- clean UI/backend contracts for future expansion
+
 ### Step shape
 Each lesson step should define:
 - `id`
@@ -112,6 +121,12 @@ This lets the experience feel dynamic while staying deterministic and controllab
 ## 7. Canvas Action Model
 
 The tutor should not draw freely. It should emit structured instructions.
+
+The tutor turn should be expressed as:
+- streamed spoken text
+- structured UI actions
+- optional question payloads
+- explicit session status (`speaking`, `awaiting_answer`, `completed`)
 
 ### Canvas actions for MVP
 - `clear`

@@ -27,3 +27,23 @@ Task ID: 001
   - Start/restart flow should remain explicit in the UI to keep shell state deterministic and avoid mount-side effects.
 
 ---
+
+## 2026-03-27 - Improve canvas engine and visual primitives
+
+Task ID: 002
+
+- Enhanced CSS for all canvas primitives in `app/app/globals.css`
+- Added smooth transition on segment fill changes (0.38s ease on `background`)
+- Added `.filled` CSS class with `::after` highlight sheen on filled segments
+- Strengthened segment dividers from 0.16 to 0.22 opacity, 2.5px border
+- Added `highlightPulse` animation (opacity only, no box-shadow for perf)
+- Added `pointerBounce` animation via `transform: translateY` (GPU-accelerated)
+- Added chalk-like `text-shadow` to `.board-text`
+- Refined `.rect` shadow with inset highlight ring
+- Added horizontal split rendering in `CanvasView` — `flexDirection: "column"` + `height: N%` per segment
+- **Learnings for future iterations:**
+  - Never animate `box-shadow` in keyframes — it causes repaints; use opacity/transform only
+  - Horizontal flex splits need `flexDirection: "column"` + `height` sizing (not `width`)
+  - `.filled` class pattern with `::after` is a clean way to add state-dependent decorations
+
+---

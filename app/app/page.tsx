@@ -295,18 +295,34 @@ function CanvasView({ scene }: { scene: CanvasScene }) {
 
         {scene.rects.map((rect) => {
           const fills = scene.fills.filter((fill) => fill.target === rect.id);
+          const splits = rect.splits;
           return (
-            <div key={rect.id} className="rect" style={{ left: rect.x, top: rect.y, width: rect.width, height: rect.height }}>
-              {rect.splits && rect.splits.direction === "vertical"
-                ? Array.from({ length: rect.splits.parts }).map((_, i) => {
+            <div
+              key={rect.id}
+              className="rect"
+              style={{
+                left: rect.x,
+                top: rect.y,
+                width: rect.width,
+                height: rect.height,
+                flexDirection: splits?.direction === "horizontal" ? "column" : "row",
+              }}
+            >
+              {splits
+                ? Array.from({ length: splits.parts }).map((_, i) => {
                     const segment = i + 1;
                     const fill = fills.find((f) => f.segment === segment);
-                    const parts = rect.splits?.parts ?? 1;
+                    const isFilled = !!fill?.color;
+                    const direction = splits.direction;
+                    const sizePercent = `${100 / splits.parts}%`;
                     return (
                       <div
                         key={`${rect.id}-${segment}`}
-                        className="segment vertical"
-                        style={{ width: `${100 / parts}%`, background: fill?.color ?? "transparent" }}
+                        className={`segment ${direction}${isFilled ? " filled" : ""}`}
+                        style={{
+                          ...(direction === "vertical" ? { width: sizePercent } : { height: sizePercent }),
+                          background: fill?.color ?? "transparent",
+                        }}
                       />
                     );
                   })

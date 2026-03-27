@@ -1,0 +1,13 @@
+# Loop Progress Log
+
+Started: 2026-03-27
+Feature: child-tutor-ai
+
+## Codebase Patterns
+
+- App code lives under `app/` (Next.js app router project nested inside repo root).
+- Keep tutor/canvas contracts centralized in `app/lib/tutor-types.ts`.
+- Keep lesson content isolated from rendering so future topics can swap in cleanly.
+- Maintain AI-SDK-compatible backend shape even when using fallbacks.
+
+---

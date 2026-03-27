@@ -8,7 +8,7 @@ Started: 2026-03-27
 - [x] 002 - Improve canvas engine and visual primitives
 - [x] 003 - Add streaming tutor speech rendering in UI
 - [x] 004 - Improve lesson flow and state transitions
-- [ ] 005 - Add voice input beta with safe fallback
+- [x] 005 - Add voice input beta with safe fallback
 - [ ] 006 - Polish completion state and replay flow
 - [ ] 007 - Deploy and verify production demo
 

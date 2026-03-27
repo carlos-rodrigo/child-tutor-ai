@@ -85,3 +85,22 @@ Task ID: 004
   - Always wrap JSON.parse of response headers in try-catch — proxies can corrupt them
 
 ---
+
+## 2026-03-27 - Add voice input beta with safe fallback
+
+Task ID: 005
+
+- Added `VoiceState` type (`idle | listening | unsupported | denied`) and `voiceState` state
+- Added `getSpeechRecognition()` helper with full local TypeScript interface declarations (ISpeechRecognition, SpeechRecognitionCtor) — no ts-ignore, no `as any`
+- Added `startVoiceInput()` using Web Speech API: sets `listening`, fires `answer()` on match, handles `not-allowed` → `denied`, all other errors → silent `idle` fallback
+- Transcript matched against choice labels with empty-string guard (fixed review bug)
+- `onend` functional updater preserves sticky failure states
+- Mic button renders below choices only when lesson is active; choice buttons always visible
+- Added CSS: `.voice-input-row`, `.mic-button`, `.mic-button.listening` (pulse ring), `.beta-badge`, `.voice-hint`
+- Build passes: `cd app && npm run build` ✅
+- **Learnings for future iterations:**
+  - Web Speech API types not in standard TS lib — use local interface declarations with a ctor type alias
+  - `label.includes("")` is always true — always guard `if (!transcript) return` before symmetric includes matching
+  - SpeechRecognition `onend` always fires after `onresult`/`onerror` — use functional state updater to avoid resetting sticky states
+
+---

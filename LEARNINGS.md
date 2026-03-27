@@ -53,3 +53,24 @@
 **Context:** Task 004 — x-tutor-turn header parsing
 **Learning:** Even server-set headers can be corrupted by proxies or bugs. Always wrap JSON.parse of any response header in try-catch and swallow gracefully rather than crashing the handler.
 **Applies to:** All fetch-based streaming consumers that parse structured headers
+
+## Web Speech API: Local Type Declarations
+
+**Date:** 2026-03-27
+**Context:** Adding voice input without TypeScript lib types for SpeechRecognition.
+**Learning:** Declare a local `ISpeechRecognition` interface and a `SpeechRecognitionCtor` type alias, then use `getSpeechRecognition()` returning `SpeechRecognitionCtor | null`. Avoids `@ts-ignore` and `as any` entirely.
+**Applies to:** Any Web API not in the configured TypeScript lib target.
+
+## Empty String in includes() Matching
+
+**Date:** 2026-03-27
+**Context:** Matching a voice transcript against choice labels using `label.includes(transcript)`.
+**Learning:** `String.prototype.includes("")` is always `true`. Any symmetric partial-match logic must guard `if (!input) return` before the comparison or it will false-match on empty input.
+**Applies to:** Any search/filter/match that uses `.includes()` with user-supplied input.
+
+## SpeechRecognition onend Always Fires
+
+**Date:** 2026-03-27
+**Context:** Voice input state machine cleanup after recognition ends.
+**Learning:** `onend` fires after both `onresult` and `onerror`. Use a functional state updater `setVoiceState((s) => s === "listening" ? "idle" : s)` in `onend` so it only resets the transient listening state and leaves sticky failure states (denied, unsupported) untouched.
+**Applies to:** Any cleanup that must not overwrite sticky/terminal states.

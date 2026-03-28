@@ -109,3 +109,15 @@
 **Context:** Vercel CLI unavailable; pushed to main to rely on GitHub integration.
 **Learning:** Vercel GitHub integration auto-deploys on push to the production branch (usually `main`). This is the fallback when CLI tokens are stale. The integration requires a healthy webhook — check Vercel dashboard → Project → Settings → Git if pushes don't trigger builds.
 **Applies to:** Any project with Vercel GitHub integration set up.
+
+## Excalidraw Integration in Next.js
+
+**Date:** 2026-03-28
+**Context:** Setting up Excalidraw as a full-page canvas in a Next.js 16 app.
+**Learnings:**
+- Import types from `@excalidraw/excalidraw/types` and `@excalidraw/excalidraw/data/transform` — NOT from `dist/types/...` paths. The package exports map handles resolution.
+- `convertToExcalidrawElements()` takes skeleton objects (minimal: type + x/y/width/height) and returns full elements with IDs, versions, fractional indexes, etc. This is the correct API for programmatic element creation.
+- Excalidraw MUST be dynamically imported with `{ ssr: false }` in Next.js — it uses browser APIs that crash during SSR.
+- `updateScene({ elements: [...] })` replaces all elements. To add incrementally, spread existing + new.
+- `scrollToContent(undefined, { fitToContent: true, animate: true })` auto-fits viewport to all elements.
+**Applies to:** Any future Excalidraw integration, canvas-tutor tasks 002-007.

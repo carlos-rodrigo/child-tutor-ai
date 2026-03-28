@@ -4,7 +4,7 @@ Started: 2026-03-28
 
 ## Progress
 
-- [ ] 001 - Set up Excalidraw and programmatic element creation
+- [x] 001 - Set up Excalidraw and programmatic element creation
 - [ ] 002 - Build command queue with progressive reveal and viewport control
 - [ ] 003 - Add voice narration synchronized with canvas drawing
 - [ ] 004 - Build AI teaching endpoint with streaming tool calls

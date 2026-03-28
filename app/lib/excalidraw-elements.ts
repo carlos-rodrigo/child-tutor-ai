@@ -8,7 +8,7 @@
  * making them easy to test.
  */
 
-import type { ExcalidrawElementSkeleton } from "@excalidraw/excalidraw/dist/types/excalidraw/data/transform";
+import type { ExcalidrawElementSkeleton } from "@excalidraw/excalidraw/data/transform";
 
 // ---------------------------------------------------------------------------
 // Canvas command types (what the AI / command queue produces)

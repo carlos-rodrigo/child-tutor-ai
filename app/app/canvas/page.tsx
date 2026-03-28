@@ -73,6 +73,7 @@ const DEMO_COMMANDS: CanvasCommand[] = [
 export default function CanvasPage() {
   const apiRef = useRef<ExcalidrawImperativeAPI | null>(null);
   const [isRunning, setIsRunning] = useState(false);
+  const runningRef = useRef(false);
 
   const onExcalidrawAPI = useCallback((api: ExcalidrawImperativeAPI) => {
     apiRef.current = api;
@@ -80,8 +81,9 @@ export default function CanvasPage() {
 
   const runDemo = useCallback(async () => {
     const api = apiRef.current;
-    if (!api || isRunning) return;
+    if (!api || runningRef.current) return;
 
+    runningRef.current = true;
     setIsRunning(true);
 
     // Collect all elements progressively
@@ -121,8 +123,9 @@ export default function CanvasPage() {
       await sleep(500);
     }
 
+    runningRef.current = false;
     setIsRunning(false);
-  }, [isRunning]);
+  }, []);
 
   return (
     <div style={{ width: "100vw", height: "100vh", position: "relative" }}>

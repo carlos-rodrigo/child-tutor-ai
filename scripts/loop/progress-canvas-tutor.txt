@@ -1,0 +1,28 @@
+# Loop Progress Log
+
+Started: 2026-03-28
+Feature: canvas-tutor
+
+## Codebase Patterns
+
+- Next.js app lives in `app/`
+- Excalidraw must be dynamically imported with `{ ssr: false }`
+- Use `convertToExcalidrawElements()` with skeleton objects for programmatic drawing
+- Import Excalidraw types from package export paths (`@excalidraw/excalidraw/types`, `@excalidraw/excalidraw/data/transform`)
+- When AI adds scene elements, merge with `api.getSceneElements()` first so existing student drawings are preserved
+- Keep the canvas command queue as a pure injected executor (`executeCommand` + optional `sleep`) so behavior stays unit-testable
+
+---
+
+## 2026-03-29 - Build command queue with progressive reveal and viewport control
+
+Task ID: 002
+
+- Added `CanvasCommandQueue` with sequential processing, configurable delay, `clear()`, `reset()`, and idle waiting
+- Wired the `/canvas` demo to run through the queue and auto-pan the viewport to each newly drawn Excalidraw element
+- Added Vitest coverage for queue sequencing/reset behavior and tightened existing Excalidraw skeleton tests so `npm run typecheck` stays green
+- **Learnings for future iterations:**
+  - Merge AI-authored elements with the live Excalidraw scene instead of a local array to avoid deleting child-authored content
+  - Injecting `sleep()` into the queue makes timing logic deterministic to test without fake browser timers
+
+---

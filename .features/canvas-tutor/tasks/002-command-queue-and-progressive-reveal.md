@@ -1,6 +1,6 @@
 ---
 id: 002
-status: open
+status: done
 depends: [001]
 created: 2026-03-28
 ---
@@ -22,12 +22,12 @@ Create a command queue that processes canvas commands sequentially with configur
 
 ## Acceptance criteria
 
-- [ ] Command queue processes commands one at a time with visible delay
-- [ ] Elements appear progressively on the canvas (not all at once)
-- [ ] Viewport auto-scrolls to follow new elements
-- [ ] Queue can be cleared/reset
-- [ ] Delay is configurable
-- [ ] Demo button triggers a multi-step sequence that feels animated
+- [x] Command queue processes commands one at a time with visible delay
+- [x] Elements appear progressively on the canvas (not all at once)
+- [x] Viewport auto-scrolls to follow new elements
+- [x] Queue can be cleared/reset
+- [x] Delay is configurable
+- [x] Demo button triggers a multi-step sequence that feels animated
 
 ## Files
 

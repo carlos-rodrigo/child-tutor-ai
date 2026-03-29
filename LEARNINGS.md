@@ -121,3 +121,10 @@
 - `updateScene({ elements: [...] })` replaces all elements. To add incrementally, spread existing + new.
 - `scrollToContent(undefined, { fitToContent: true, animate: true })` auto-fits viewport to all elements.
 **Applies to:** Any future Excalidraw integration, canvas-tutor tasks 002-007.
+
+## Excalidraw: Merge against live scene when AI draws progressively
+
+**Date:** 2026-03-29
+**Context:** Task 002 for canvas-tutor — adding a sequential command queue that updates Excalidraw over time.
+**Learning:** `updateScene()` replaces the whole scene, so a progressive AI renderer must merge new elements with `api.getSceneElements()` on every step. Keeping a separate local array risks wiping out child-authored drawings or any scene changes that happened between queued commands.
+**Applies to:** All future canvas-tutor work where AI and student both draw on the same Excalidraw board.

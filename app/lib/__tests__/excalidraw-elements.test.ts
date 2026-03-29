@@ -39,7 +39,12 @@ describe("createRectSkeleton", () => {
 
 describe("createTextSkeleton", () => {
   it("creates a text skeleton with required fields", () => {
-    const text = createTextSkeleton({ text: "1/2", x: 100, y: 200 });
+    const text = createTextSkeleton({ text: "1/2", x: 100, y: 200 }) as {
+      type: string;
+      text: string;
+      x: number;
+      y: number;
+    };
     expect(text.type).toBe("text");
     expect(text.text).toBe("1/2");
     expect(text.x).toBe(100);
@@ -47,12 +52,19 @@ describe("createTextSkeleton", () => {
   });
 
   it("applies optional fontSize", () => {
-    const text = createTextSkeleton({ text: "Hello", x: 0, y: 0, fontSize: 32 });
+    const text = createTextSkeleton({
+      text: "Hello",
+      x: 0,
+      y: 0,
+      fontSize: 32,
+    }) as { fontSize: number };
     expect(text.fontSize).toBe(32);
   });
 
   it("defaults to fontSize 24", () => {
-    const text = createTextSkeleton({ text: "Hello", x: 0, y: 0 });
+    const text = createTextSkeleton({ text: "Hello", x: 0, y: 0 }) as {
+      fontSize: number;
+    };
     expect(text.fontSize).toBe(24);
   });
 });
@@ -77,7 +89,7 @@ describe("createArrowSkeleton", () => {
       endX: 100,
       endY: 50,
       label: "look here",
-    });
+    }) as { label?: { text?: string } };
     expect(arrow.label?.text).toBe("look here");
   });
 });

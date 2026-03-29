@@ -1,17 +1,37 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type FormEventHandler,
+  type MutableRefObject,
+} from "react";
 import dynamic from "next/dynamic";
 
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import { CanvasCommandQueue } from "@/lib/canvas-command-queue";
-import { CanvasDemoControls } from "@/lib/canvas-demo-controls";
+import { CanvasTutorControls } from "@/lib/canvas-tutor-controls";
 import { DEMO_COMMANDS, DEMO_DELAY_MS } from "@/lib/canvas-demo";
 import { commandToSkeleton, type CanvasCommand } from "@/lib/excalidraw-elements";
 import { createSpeechPlayer } from "@/lib/speech-player";
+import { consumeTutorDataStream } from "@/lib/tutor-stream";
 
 const VIEWPORT_ZOOM_FACTOR = 0.35;
 const VIEWPORT_ANIMATION_MS = 300;
+const DEFAULT_STATUS_TEXT = "Ask for a math lesson to begin.";
+const READY_STATUS_TEXT = "Ready for the next question.";
+const THINKING_STATUS_TEXT = "Thinking…";
+const TEACHING_STATUS_TEXT = "Teaching on the canvas…";
+const DEMO_STATUS_TEXT = "Running the fallback demo lesson…";
+const DEFAULT_TRANSCRIPT_TEXT = "Ask me to teach fractions, multiplication, or division.";
+
+type ConversationMessage = {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+};
 
 const Excalidraw = dynamic(
   () => import("@excalidraw/excalidraw").then((mod) => mod.Excalidraw),
@@ -33,11 +53,22 @@ export default function CanvasPage() {
   const speechPlayerRef = useRef<ReturnType<typeof createSpeechPlayer> | null>(null);
   const runningRef = useRef(false);
   const isMutedRef = useRef(false);
-  const [isRunning, setIsRunning] = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const messageCountRef = useRef(0);
+
+  const [conversation, setConversation] = useState<ConversationMessage[]>([]);
+  const [input, setInput] = useState("");
+  const [isCanvasReady, setIsCanvasReady] = useState(false);
+  const [isTeaching, setIsTeaching] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [statusText, setStatusText] = useState(DEFAULT_STATUS_TEXT);
+  const [transcript, setTranscript] = useState(DEFAULT_TRANSCRIPT_TEXT);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [showDemoFallback, setShowDemoFallback] = useState(false);
 
   const onExcalidrawAPI = useCallback((api: ExcalidrawImperativeAPI) => {
     apiRef.current = api;
+    setIsCanvasReady(true);
   }, []);
 
   const getSpeechPlayer = useCallback(() => {
@@ -54,6 +85,7 @@ export default function CanvasPage() {
 
   useEffect(() => {
     return () => {
+      abortControllerRef.current?.abort();
       queueRef.current?.reset();
       speechPlayerRef.current?.cancel();
     };
@@ -121,8 +153,14 @@ export default function CanvasPage() {
 
     const queue = getQueue();
     runningRef.current = true;
-    setIsRunning(true);
+    setIsTeaching(true);
+    setErrorMessage(null);
+    setShowDemoFallback(false);
+    setStatusText(DEMO_STATUS_TEXT);
+    setTranscript("Let's learn about fractions!");
 
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
     getSpeechPlayer().cancel();
     queue.reset();
     queue.setDelayMs(DEMO_DELAY_MS);
@@ -130,9 +168,11 @@ export default function CanvasPage() {
 
     try {
       await queue.onIdle();
+      setTranscript("The colored part is one half.");
+      setStatusText(READY_STATUS_TEXT);
     } finally {
       runningRef.current = false;
-      setIsRunning(false);
+      setIsTeaching(false);
     }
   }, [getQueue, getSpeechPlayer]);
 
@@ -147,6 +187,107 @@ export default function CanvasPage() {
     });
   }, [getSpeechPlayer]);
 
+  const handleSubmit = useCallback<FormEventHandler<HTMLFormElement>>(
+    async (event) => {
+      event.preventDefault();
+
+      const prompt = input.trim();
+      if (!prompt || !apiRef.current || runningRef.current) {
+        return;
+      }
+
+      const queue = getQueue();
+      const nextConversation = [
+        ...conversation,
+        createConversationMessage(messageCountRef, "user", prompt),
+      ];
+
+      runningRef.current = true;
+      setIsTeaching(true);
+      setInput("");
+      setErrorMessage(null);
+      setShowDemoFallback(false);
+      setStatusText(THINKING_STATUS_TEXT);
+      setTranscript("");
+      setConversation(nextConversation);
+
+      abortControllerRef.current?.abort();
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
+      getSpeechPlayer().cancel();
+      queue.reset();
+      queue.setDelayMs(DEMO_DELAY_MS);
+
+      try {
+        const response = await fetch("/api/tutor/teach", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ messages: nextConversation }),
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          const errorPayload = await readErrorPayload(response);
+          setErrorMessage(errorPayload.message);
+          setStatusText("Tutor unavailable right now.");
+          setTranscript(errorPayload.message);
+          setShowDemoFallback(errorPayload.code === "missing_api_key");
+          queue.clear();
+          return;
+        }
+
+        if (!response.body) {
+          throw new Error("The tutor response stream was empty.");
+        }
+
+        setStatusText(TEACHING_STATUS_TEXT);
+
+        const assistantText = await consumeTutorDataStream({
+          stream: response.body,
+          onAssistantText(text) {
+            setTranscript(text);
+          },
+          onSpeechSegment(segment) {
+            queue.enqueue({ type: "speak", text: segment });
+          },
+          onCommand(command) {
+            queue.enqueue(command);
+          },
+        });
+
+        if (assistantText) {
+          setConversation((current) => [
+            ...current,
+            createConversationMessage(messageCountRef, "assistant", assistantText),
+          ]);
+        }
+
+        await queue.onIdle();
+        setStatusText(READY_STATUS_TEXT);
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          const message = getErrorMessage(error);
+          setErrorMessage(message);
+          setTranscript(message);
+          setStatusText("Something went wrong.");
+          queue.clear();
+          getSpeechPlayer().cancel();
+        }
+      } finally {
+        if (abortControllerRef.current === controller) {
+          abortControllerRef.current = null;
+        }
+
+        runningRef.current = false;
+        setIsTeaching(false);
+      }
+    },
+    [conversation, getQueue, getSpeechPlayer, input]
+  );
+
   return (
     <div style={{ width: "100vw", height: "100vh", position: "relative" }}>
       <Excalidraw
@@ -159,14 +300,99 @@ export default function CanvasPage() {
         }}
       />
 
-      <CanvasDemoControls
+      <div
+        style={{
+          position: "fixed",
+          top: 20,
+          left: 20,
+          zIndex: 120,
+          maxWidth: 360,
+          padding: "14px 16px",
+          borderRadius: 18,
+          background: "rgba(255,255,255,0.9)",
+          border: "1px solid rgba(15, 23, 42, 0.08)",
+          boxShadow: "0 14px 30px rgba(15, 23, 42, 0.12)",
+          backdropFilter: "blur(18px)",
+        }}
+      >
+        <p
+          style={{
+            margin: 0,
+            fontSize: 12,
+            fontWeight: 700,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            color: "#2563eb",
+          }}
+        >
+          AI tutor
+        </p>
+        <p
+          aria-live="polite"
+          style={{
+            margin: "8px 0 0",
+            color: "#0f172a",
+            fontSize: 16,
+            lineHeight: 1.45,
+            fontWeight: 500,
+          }}
+        >
+          {transcript || DEFAULT_TRANSCRIPT_TEXT}
+        </p>
+      </div>
+
+      <CanvasTutorControls
+        input={input}
+        canSubmit={isCanvasReady && !isTeaching && input.trim().length > 0}
+        errorMessage={errorMessage}
         isMuted={isMuted}
-        isRunning={isRunning}
+        isTeaching={isTeaching}
+        showDemoFallback={showDemoFallback}
+        statusText={statusText}
+        onInputChange={setInput}
         onRunDemo={runDemo}
+        onSubmit={handleSubmit}
         onToggleMute={toggleMute}
       />
     </div>
   );
+}
+
+function createConversationMessage(
+  messageCountRef: MutableRefObject<number>,
+  role: ConversationMessage["role"],
+  content: string
+): ConversationMessage {
+  messageCountRef.current += 1;
+
+  return {
+    id: `message-${messageCountRef.current}`,
+    role,
+    content,
+  };
+}
+
+async function readErrorPayload(response: Response) {
+  try {
+    const payload = (await response.json()) as {
+      code?: string;
+      error?: string;
+    };
+
+    return {
+      code: payload.code ?? null,
+      message: payload.error ?? "The tutor could not answer right now.",
+    };
+  } catch {
+    return {
+      code: null,
+      message: "The tutor could not answer right now.",
+    };
+  }
+}
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "The tutor could not answer right now.";
 }
 
 function focusViewport(

@@ -30,7 +30,10 @@ const teachRequestSchema = z.object({
 function toCoreMessages(messages: z.infer<typeof teachRequestSchema>["messages"]) {
   const requestMessages = messages
     .filter((message) => message.role !== "system")
-    .map(({ id: _id, ...message }) => message) as Array<Omit<Message, "id">>;
+    .map((message) => ({
+      role: message.role,
+      content: message.content,
+    })) as Array<Omit<Message, "id">>;
 
   return convertToCoreMessages(requestMessages);
 }

@@ -13,6 +13,7 @@ Feature: canvas-tutor
 - When AI adds scene elements, merge with `api.getSceneElements()` first so existing student drawings are preserved
 - Keep the canvas command queue as a pure injected executor (`executeCommand` + optional `sleep`) so behavior stays unit-testable
 - Treat `SpeechSynthesis` as unreliable I/O: wrap utterances in a cancelable promise with timeout + sync-error handling so narration can never deadlock the queue
+- On the client, parse `toDataStreamResponse()` with `processDataStream()` and drive the canvas from streamed `tool_result` acknowledgements so only server-validated commands reach Excalidraw; buffer text deltas into sentence-sized speech queue items for natural narration
 
 ---
 
@@ -52,5 +53,18 @@ Task ID: 004
 - **Learnings for future iterations:**
   - Strip client-supplied `system` messages at the route boundary so the server keeps control of the tutor prompt
   - Put conservative caps on streamed conversation history to avoid accidental token blowups before the frontend input layer is finished
+
+---
+
+## 2026-03-29 - Connect frontend to AI streaming endpoint
+
+Task ID: 005
+
+- Replaced the canvas demo controls with a floating tutor prompt overlay, streamed transcript card, loading states, and a missing-key demo fallback
+- Wired `/canvas` to `/api/tutor/teach` using manual `fetch()` + AI SDK `processDataStream()` so text becomes queued speech and tool acknowledgements become Excalidraw commands in order
+- Added Vitest coverage for the tutor stream parser and the new canvas control surface, plus cleaned the route message mapping so lint/build/typecheck all pass
+- **Learnings for future iterations:**
+  - `tool_result` stream parts are the safest frontend integration point because they contain the server-validated canvas command returned by each tool `execute()`
+  - Buffering text deltas until sentence boundaries keeps browser narration natural; speaking every raw chunk would sound broken and spam the speech queue
 
 ---

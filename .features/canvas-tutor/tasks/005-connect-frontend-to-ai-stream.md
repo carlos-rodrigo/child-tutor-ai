@@ -1,6 +1,6 @@
 ---
 id: 005
-status: open
+status: done
 depends: [004]
 created: 2026-03-28
 ---
@@ -23,12 +23,12 @@ Wire the canvas UI to the `/api/tutor/teach` endpoint. The child types a request
 
 ## Acceptance criteria
 
-- [ ] Child can type "teach me fractions" and get a dynamic AI-generated lesson
-- [ ] AI response streams into the command queue — drawing + narration happen progressively
-- [ ] Conversation history maintained — follow-up messages have context
-- [ ] Text input is minimal and doesn't block the canvas
-- [ ] Loading state shown while AI generates
-- [ ] Works end-to-end: type → stream → draw → speak
+- [x] Child can type "teach me fractions" and get a dynamic AI-generated lesson
+- [x] AI response streams into the command queue — drawing + narration happen progressively
+- [x] Conversation history maintained — follow-up messages have context
+- [x] Text input is minimal and doesn't block the canvas
+- [x] Loading state shown while AI generates
+- [x] Works end-to-end: type → stream → draw → speak
 
 ## Files
 

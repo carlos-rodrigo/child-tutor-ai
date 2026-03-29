@@ -142,3 +142,10 @@
 **Context:** Task 004 for canvas-tutor — building `/api/tutor/teach` with streamed drawing tool calls.
 **Learning:** If the frontend needs streamed tool calls, return `streamText(...).toDataStreamResponse()` with `toolCallStreaming: true`; plain text streams only carry narration. If the model should chain multiple tool rounds in one turn, give tools lightweight `execute()` acknowledgements and set `maxSteps > 1`, otherwise the model only gets a single tool-call step.
 **Applies to:** Any future AI SDK route in this project that streams structured tool calls to the client.
+
+## AI SDK Client Streams: Drive UI from `tool_result`, not raw tool-call deltas
+
+**Date:** 2026-03-29
+**Context:** Task 005 for canvas-tutor — wiring the Excalidraw frontend to `/api/tutor/teach`.
+**Learning:** On the client, `processDataStream()` can parse `toDataStreamResponse()` directly. For canvas rendering, consume `tool_result` parts instead of raw `tool_call_delta` fragments: the result contains the server-validated command returned by each tool `execute()`, so the browser only acts on normalized, trusted command shapes. Buffer text deltas until sentence boundaries before enqueueing speech, otherwise narration becomes choppy and over-fragmented.
+**Applies to:** Any future streamed AI UI in this project that mixes browser speech with structured tool execution.

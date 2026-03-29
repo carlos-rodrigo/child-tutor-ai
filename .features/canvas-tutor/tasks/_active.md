@@ -7,7 +7,7 @@ Started: 2026-03-28
 - [x] 001 - Set up Excalidraw and programmatic element creation
 - [x] 002 - Build command queue with progressive reveal and viewport control
 - [x] 003 - Add voice narration synchronized with canvas drawing
-- [ ] 004 - Build AI teaching endpoint with streaming tool calls
+- [x] 004 - Build AI teaching endpoint with streaming tool calls
 - [ ] 005 - Connect frontend to AI streaming endpoint
 - [ ] 006 - Enable student interaction and adaptive teaching
 - [ ] 007 - Polish for demo quality

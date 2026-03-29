@@ -135,3 +135,10 @@
 **Context:** Task 003 for canvas-tutor — adding SpeechSynthesis narration into the canvas command queue.
 **Learning:** Treat browser speech as unreliable I/O. Wrap each utterance in a promise that resolves on `onend`, resolves false on `onerror`, times out after a bounded delay, and catches synchronous `speechSynthesis.speak()` failures. That keeps the queue moving instead of deadlocking the lesson.
 **Applies to:** Any future queued narration, streamed speech, or voice-first UX in this project.
+
+## AI SDK Streaming: Tool-call routes need data streams + tool acknowledgements
+
+**Date:** 2026-03-29
+**Context:** Task 004 for canvas-tutor — building `/api/tutor/teach` with streamed drawing tool calls.
+**Learning:** If the frontend needs streamed tool calls, return `streamText(...).toDataStreamResponse()` with `toolCallStreaming: true`; plain text streams only carry narration. If the model should chain multiple tool rounds in one turn, give tools lightweight `execute()` acknowledgements and set `maxSteps > 1`, otherwise the model only gets a single tool-call step.
+**Applies to:** Any future AI SDK route in this project that streams structured tool calls to the client.

@@ -12,6 +12,13 @@ function makeTextCommand(text: string): CanvasCommand {
   };
 }
 
+function makeSpeakCommand(text: string): CanvasCommand {
+  return {
+    type: "speak",
+    text,
+  };
+}
+
 function deferred() {
   let resolve!: () => void;
   const promise = new Promise<void>((res) => {
@@ -111,5 +118,35 @@ describe("CanvasCommandQueue", () => {
 
     expect(queue.getDelayMs()).toBe(650);
     expect(sleep).toHaveBeenCalledWith(650);
+  });
+
+  it("waits for a speak command to finish before moving on", async () => {
+    const events: string[] = [];
+    const speech = deferred();
+    const sleep = vi.fn().mockResolvedValue(undefined);
+    const queue = new CanvasCommandQueue(async (command) => {
+      if (command.type === "speak") {
+        events.push(`start:${command.text}`);
+        await speech.promise;
+        events.push(`end:${command.text}`);
+        return;
+      }
+
+      if (command.type === "write_text") {
+        events.push(`draw:${command.text}`);
+      }
+    }, { delayMs: 400, sleep });
+
+    queue.enqueueMany([makeSpeakCommand("hello"), makeTextCommand("after speech")]);
+    await Promise.resolve();
+
+    expect(events).toEqual(["start:hello"]);
+
+    speech.resolve();
+    await queue.onIdle();
+
+    expect(events).toEqual(["start:hello", "end:hello", "draw:after speech"]);
+    expect(sleep).toHaveBeenCalledOnce();
+    expect(sleep).toHaveBeenCalledWith(400);
   });
 });

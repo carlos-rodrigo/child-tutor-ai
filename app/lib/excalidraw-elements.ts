@@ -33,6 +33,10 @@ export type CanvasCommand =
       fontSize?: number;
     }
   | {
+      type: "speak";
+      text: string;
+    }
+  | {
       type: "draw_arrow";
       startX: number;
       startY: number;
@@ -214,6 +218,8 @@ export function commandToSkeleton(
         y: cmd.y,
         fontSize: cmd.fontSize,
       });
+    case "speak":
+      return null;
     case "draw_arrow":
       return createArrowSkeleton({
         startX: cmd.startX,

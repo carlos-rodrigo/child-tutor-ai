@@ -128,3 +128,10 @@
 **Context:** Task 002 for canvas-tutor — adding a sequential command queue that updates Excalidraw over time.
 **Learning:** `updateScene()` replaces the whole scene, so a progressive AI renderer must merge new elements with `api.getSceneElements()` on every step. Keeping a separate local array risks wiping out child-authored drawings or any scene changes that happened between queued commands.
 **Applies to:** All future canvas-tutor work where AI and student both draw on the same Excalidraw board.
+
+## Web Speech: Guard queued narration against hangs and sync failures
+
+**Date:** 2026-03-29
+**Context:** Task 003 for canvas-tutor — adding SpeechSynthesis narration into the canvas command queue.
+**Learning:** Treat browser speech as unreliable I/O. Wrap each utterance in a promise that resolves on `onend`, resolves false on `onerror`, times out after a bounded delay, and catches synchronous `speechSynthesis.speak()` failures. That keeps the queue moving instead of deadlocking the lesson.
+**Applies to:** Any future queued narration, streamed speech, or voice-first UX in this project.

@@ -11,6 +11,7 @@ Feature: canvas-tutor
 - Import Excalidraw types from package export paths (`@excalidraw/excalidraw/types`, `@excalidraw/excalidraw/data/transform`)
 - When AI adds scene elements, merge with `api.getSceneElements()` first so existing student drawings are preserved
 - Keep the canvas command queue as a pure injected executor (`executeCommand` + optional `sleep`) so behavior stays unit-testable
+- Treat `SpeechSynthesis` as unreliable I/O: wrap utterances in a cancelable promise with timeout + sync-error handling so narration can never deadlock the queue
 
 ---
 
@@ -24,5 +25,18 @@ Task ID: 002
 - **Learnings for future iterations:**
   - Merge AI-authored elements with the live Excalidraw scene instead of a local array to avoid deleting child-authored content
   - Injecting `sleep()` into the queue makes timing logic deterministic to test without fake browser timers
+
+---
+
+## 2026-03-29 - Add voice narration synchronized with canvas drawing
+
+Task ID: 003
+
+- Added a reusable speech player that turns browser `SpeechSynthesis` into a queued, cancelable promise with child-friendly rate/pitch settings
+- Interleaved `speak` commands into the canvas demo and added a floating mute toggle that can stop narration mid-run without breaking the draw queue
+- Added Vitest coverage for speech playback timing, timeout/cancel behavior, demo sequencing, and control interactions
+- **Learnings for future iterations:**
+  - Catch synchronous `speechSynthesis.speak()` failures in addition to `onerror` events, otherwise the queue can hang waiting for an utterance that never started
+  - Keeping narration sequencing in a small adapter module makes the canvas page stay focused on Excalidraw updates and mute state
 
 ---

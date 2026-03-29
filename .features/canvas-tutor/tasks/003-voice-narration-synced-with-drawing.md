@@ -1,6 +1,6 @@
 ---
 id: 003
-status: open
+status: done
 depends: [002]
 created: 2026-03-28
 ---
@@ -27,12 +27,12 @@ Integrate browser SpeechSynthesis with the command queue so the tutor narrates a
 
 ## Acceptance criteria
 
-- [ ] Speech plays synchronized with drawing steps
-- [ ] Queue waits for speech to finish before next command
-- [ ] Mute/unmute button works
-- [ ] Demo sequence tells a coherent fractions story with voice + visuals
-- [ ] Speech rate and pitch are child-friendly
-- [ ] No overlapping speech utterances
+- [x] Speech plays synchronized with drawing steps
+- [x] Queue waits for speech to finish before next command
+- [x] Mute/unmute button works
+- [x] Demo sequence tells a coherent fractions story with voice + visuals
+- [x] Speech rate and pitch are child-friendly
+- [x] No overlapping speech utterances
 
 ## Files
 

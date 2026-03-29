@@ -110,7 +110,11 @@ export function createSpeechPlayer(
           finish(false);
         };
 
-        synth.speak(utterance);
+        try {
+          synth.speak(utterance);
+        } catch {
+          finish(false);
+        }
       });
     },
     cancel() {

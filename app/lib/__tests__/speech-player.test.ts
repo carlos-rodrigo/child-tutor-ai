@@ -99,4 +99,37 @@ describe("createSpeechPlayer", () => {
 
     vi.useRealTimers();
   });
+
+  it("resolves the in-flight promise when cancelled explicitly", async () => {
+    const synth = {
+      speak: vi.fn(),
+      cancel: vi.fn(),
+    };
+    const player = createSpeechPlayer({
+      synth,
+      createUtterance: createMockUtterance,
+    });
+
+    const speakPromise = player.speak("Pause here");
+    player.cancel();
+
+    await expect(speakPromise).resolves.toBe(false);
+    expect(synth.cancel).toHaveBeenCalledTimes(2);
+  });
+
+  it("fails closed when speech synthesis throws synchronously", async () => {
+    const synth = {
+      speak: vi.fn(() => {
+        throw new Error("Speech unavailable");
+      }),
+      cancel: vi.fn(),
+    };
+    const player = createSpeechPlayer({
+      synth,
+      createUtterance: createMockUtterance,
+    });
+
+    await expect(player.speak("Hello")).resolves.toBe(false);
+    expect(synth.cancel).toHaveBeenCalledTimes(1);
+  });
 });

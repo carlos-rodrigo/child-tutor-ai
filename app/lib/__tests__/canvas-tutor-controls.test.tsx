@@ -69,4 +69,25 @@ describe("CanvasTutorControls", () => {
       false
     );
   });
+
+  it("highlights the answer box when the tutor is waiting for the child", () => {
+    render(
+      <CanvasTutorControls
+        input=""
+        canSubmit={false}
+        isAwaitingResponse={true}
+        isMuted={false}
+        isTeaching={false}
+        statusText="Your turn — answer the tutor."
+        onInputChange={() => undefined}
+        onSubmit={(event) => event.preventDefault()}
+        onToggleMute={() => undefined}
+      />
+    );
+
+    expect(screen.getByText("Your turn — answer the tutor.")).not.toBeNull();
+    expect(screen.getByPlaceholderText("Type your answer here...")).toBeTruthy();
+    expect(screen.getByText("Answer the tutor")).not.toBeNull();
+    expect(screen.getByRole("button", { name: "Answer" })).toBeTruthy();
+  });
 });

@@ -65,6 +65,11 @@ describe("POST /api/tutor/teach", () => {
           { id: "msg-1", role: "user", content: "teach me fractions" },
           { id: "msg-2", role: "assistant", content: "Let’s draw this together." },
         ],
+        lessonContext: {
+          interactionMode: "topic_switch",
+          currentTopic: "multiplication",
+          boardArea: { x: 1600, y: 0, zoom: 0.35 },
+        },
       }),
     });
 
@@ -74,6 +79,9 @@ describe("POST /api/tutor/teach", () => {
     expect(openaiMock).toHaveBeenCalledWith("gpt-4o-mini");
     expect(streamTextMock).toHaveBeenCalledTimes(1);
     expect(options.system).toContain("teach by drawing on a whiteboard");
+    expect(options.system).toContain("The child just switched topics");
+    expect(options.system).toContain("x=1600");
+    expect(options.system).toContain("Do not erase previous drawings when switching topics");
     expect(options.maxSteps).toBeGreaterThan(1);
     expect(Object.keys(options.tools)).toEqual([
       "draw_shape",

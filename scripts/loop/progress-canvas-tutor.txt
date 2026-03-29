@@ -14,6 +14,7 @@ Feature: canvas-tutor
 - Keep the canvas command queue as a pure injected executor (`executeCommand` + optional `sleep`) so behavior stays unit-testable
 - Treat `SpeechSynthesis` as unreliable I/O: wrap utterances in a cancelable promise with timeout + sync-error handling so narration can never deadlock the queue
 - On the client, parse `toDataStreamResponse()` with `processDataStream()` and drive the canvas from streamed `tool_result` acknowledgements so only server-validated commands reach Excalidraw; buffer text deltas into sentence-sized speech queue items for natural narration
+- For adaptive tutoring turns, send structured `lessonContext` (`interactionMode`, `currentTopic`, `boardArea`) with the request so the server can force fresh-board-area guidance without trusting ad-hoc text prompts
 
 ---
 
@@ -66,5 +67,17 @@ Task ID: 005
 - **Learnings for future iterations:**
   - `tool_result` stream parts are the safest frontend integration point because they contain the server-validated canvas command returned by each tool `execute()`
   - Buffering text deltas until sentence boundaries keeps browser narration natural; speaking every raw chunk would sound broken and spam the speech queue
+
+---
+## 2026-03-29 - Enable student interaction and adaptive teaching
+
+Task ID: 006
+
+- Added turn classification and per-turn lesson context so student answers, confusion, and topic switches send structured guidance to the `/api/tutor/teach` prompt
+- Updated the canvas UI to highlight when the tutor asks a question, simplify the visible Excalidraw toolbar to freedraw/text/eraser, and pre-pan to fresh board areas for topic switches or reteaching
+- Expanded tests for tutor turn classification, adaptive prompt generation, and the response-focused control state; validated with `cd app && npm test && npm run typecheck && npm run build`
+- **Learnings for future iterations:**
+  - Layout-sensitive tutoring works better when the client sends explicit board-area context instead of hoping the model infers where to draw next
+  - A lightweight UI cue (`Your turn`, answer placeholder, answer button) is enough to make question/response turns feel conversational without adding a chat panel
 
 ---

@@ -16,6 +16,11 @@ import { CanvasTutorControls } from "@/lib/canvas-tutor-controls";
 import { DEMO_COMMANDS, DEMO_DELAY_MS } from "@/lib/canvas-demo";
 import { commandToSkeleton, type CanvasCommand } from "@/lib/excalidraw-elements";
 import { createSpeechPlayer } from "@/lib/speech-player";
+import {
+  classifyStudentTurn,
+  createBoardArea,
+  shouldAwaitStudentReply,
+} from "@/lib/tutor-session";
 import { consumeTutorDataStream } from "@/lib/tutor-stream";
 
 const VIEWPORT_ZOOM_FACTOR = 0.35;
@@ -25,7 +30,27 @@ const READY_STATUS_TEXT = "Ready for the next question.";
 const THINKING_STATUS_TEXT = "Thinking…";
 const TEACHING_STATUS_TEXT = "Teaching on the canvas…";
 const DEMO_STATUS_TEXT = "Running the fallback demo lesson…";
+const AWAITING_RESPONSE_STATUS_TEXT = "Your turn — answer the tutor.";
 const DEFAULT_TRANSCRIPT_TEXT = "Ask me to teach fractions, multiplication, or division.";
+const STUDENT_TOOLBAR_STYLES = `
+  .excalidraw [data-testid="toolbar-selection"],
+  .excalidraw [data-testid="toolbar-rectangle"],
+  .excalidraw [data-testid="toolbar-diamond"],
+  .excalidraw [data-testid="toolbar-ellipse"],
+  .excalidraw [data-testid="toolbar-arrow"],
+  .excalidraw [data-testid="toolbar-line"],
+  .excalidraw [data-testid="toolbar-image"],
+  .excalidraw [data-testid="toolbar-hand"],
+  .excalidraw [data-testid="toolbar-lock"],
+  .excalidraw [data-testid="toolbar-frame"],
+  .excalidraw [data-testid="toolbar-laser"],
+  .excalidraw [data-testid="toolbar-embeddable"],
+  .excalidraw [data-testid="toolbar-magicframe"],
+  .excalidraw .App-toolbar__extra-tools-trigger,
+  .excalidraw .App-toolbar__divider {
+    display: none !important;
+  }
+`;
 
 type ConversationMessage = {
   id: string;
@@ -55,12 +80,16 @@ export default function CanvasPage() {
   const isMutedRef = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
   const messageCountRef = useRef(0);
+  const boardAreaIndexRef = useRef(0);
+  const activeTopicRef = useRef<string | null>(null);
+  const awaitingStudentResponseRef = useRef(false);
 
   const [conversation, setConversation] = useState<ConversationMessage[]>([]);
   const [input, setInput] = useState("");
   const [isCanvasReady, setIsCanvasReady] = useState(false);
   const [isTeaching, setIsTeaching] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [isAwaitingResponse, setIsAwaitingResponse] = useState(false);
   const [statusText, setStatusText] = useState(DEFAULT_STATUS_TEXT);
   const [transcript, setTranscript] = useState(DEFAULT_TRANSCRIPT_TEXT);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -68,6 +97,7 @@ export default function CanvasPage() {
 
   const onExcalidrawAPI = useCallback((api: ExcalidrawImperativeAPI) => {
     apiRef.current = api;
+    api.setActiveTool({ type: "freedraw" });
     setIsCanvasReady(true);
   }, []);
 
@@ -146,6 +176,11 @@ export default function CanvasPage() {
     return queueRef.current;
   }, [executeCommand]);
 
+  const setAwaitingResponseState = useCallback((next: boolean) => {
+    awaitingStudentResponseRef.current = next;
+    setIsAwaitingResponse(next);
+  }, []);
+
   const runDemo = useCallback(async () => {
     if (!apiRef.current || runningRef.current) {
       return;
@@ -154,6 +189,7 @@ export default function CanvasPage() {
     const queue = getQueue();
     runningRef.current = true;
     setIsTeaching(true);
+    setAwaitingResponseState(false);
     setErrorMessage(null);
     setShowDemoFallback(false);
     setStatusText(DEMO_STATUS_TEXT);
@@ -174,7 +210,7 @@ export default function CanvasPage() {
       runningRef.current = false;
       setIsTeaching(false);
     }
-  }, [getQueue, getSpeechPlayer]);
+  }, [getQueue, getSpeechPlayer, setAwaitingResponseState]);
 
   const toggleMute = useCallback(() => {
     setIsMuted((current) => {
@@ -197,13 +233,26 @@ export default function CanvasPage() {
       }
 
       const queue = getQueue();
+      const studentTurn = classifyStudentTurn({
+        prompt,
+        awaitingStudentReply: awaitingStudentResponseRef.current,
+        activeTopic: activeTopicRef.current,
+      });
+      const nextBoardAreaIndex = studentTurn.useFreshBoardArea
+        ? boardAreaIndexRef.current + 1
+        : boardAreaIndexRef.current;
+      const boardArea = createBoardArea(nextBoardAreaIndex);
+      const nextTopic = studentTurn.nextTopic ?? activeTopicRef.current;
       const nextConversation = [
         ...conversation,
         createConversationMessage(messageCountRef, "user", prompt),
       ];
 
+      boardAreaIndexRef.current = nextBoardAreaIndex;
+      activeTopicRef.current = nextTopic;
       runningRef.current = true;
       setIsTeaching(true);
+      setAwaitingResponseState(false);
       setInput("");
       setErrorMessage(null);
       setShowDemoFallback(false);
@@ -219,18 +268,35 @@ export default function CanvasPage() {
       queue.reset();
       queue.setDelayMs(DEMO_DELAY_MS);
 
+      if (studentTurn.useFreshBoardArea) {
+        queue.enqueue({
+          type: "move_viewport",
+          x: boardArea.x,
+          y: boardArea.y,
+          zoom: boardArea.zoom,
+        });
+      }
+
       try {
         const response = await fetch("/api/tutor/teach", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ messages: nextConversation }),
+          body: JSON.stringify({
+            messages: nextConversation,
+            lessonContext: {
+              interactionMode: studentTurn.interactionMode,
+              currentTopic: nextTopic,
+              boardArea,
+            },
+          }),
           signal: controller.signal,
         });
 
         if (!response.ok) {
           const errorPayload = await readErrorPayload(response);
+          setAwaitingResponseState(false);
           setErrorMessage(errorPayload.message);
           setStatusText("Tutor unavailable right now.");
           setTranscript(errorPayload.message);
@@ -265,11 +331,17 @@ export default function CanvasPage() {
           ]);
         }
 
+        const shouldWaitForReply = shouldAwaitStudentReply(assistantText);
+        setAwaitingResponseState(shouldWaitForReply);
+
         await queue.onIdle();
-        setStatusText(READY_STATUS_TEXT);
+        setStatusText(
+          shouldWaitForReply ? AWAITING_RESPONSE_STATUS_TEXT : READY_STATUS_TEXT
+        );
       } catch (error) {
         if (!controller.signal.aborted) {
           const message = getErrorMessage(error);
+          setAwaitingResponseState(false);
           setErrorMessage(message);
           setTranscript(message);
           setStatusText("Something went wrong.");
@@ -285,13 +357,29 @@ export default function CanvasPage() {
         setIsTeaching(false);
       }
     },
-    [conversation, getQueue, getSpeechPlayer, input]
+    [conversation, getQueue, getSpeechPlayer, input, setAwaitingResponseState]
   );
 
   return (
     <div style={{ width: "100vw", height: "100vh", position: "relative" }}>
+      <style>{STUDENT_TOOLBAR_STYLES}</style>
+
       <Excalidraw
         excalidrawAPI={onExcalidrawAPI}
+        UIOptions={{
+          canvasActions: {
+            clearCanvas: false,
+            changeViewBackgroundColor: false,
+            export: false,
+            loadScene: false,
+            saveAsImage: false,
+            saveToActiveFile: false,
+            toggleTheme: false,
+          },
+          tools: {
+            image: false,
+          },
+        }}
         initialData={{
           appState: {
             viewBackgroundColor: "#fafafa",
@@ -345,6 +433,7 @@ export default function CanvasPage() {
         input={input}
         canSubmit={isCanvasReady && !isTeaching && input.trim().length > 0}
         errorMessage={errorMessage}
+        isAwaitingResponse={isAwaitingResponse}
         isMuted={isMuted}
         isTeaching={isTeaching}
         showDemoFallback={showDemoFallback}

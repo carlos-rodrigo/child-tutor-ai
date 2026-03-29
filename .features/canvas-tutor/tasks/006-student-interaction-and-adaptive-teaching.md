@@ -1,6 +1,6 @@
 ---
 id: 006
-status: open
+status: done
 depends: [005]
 created: 2026-03-28
 ---
@@ -24,12 +24,12 @@ Let the child interact beyond typing — the AI can ask questions and respond ad
 
 ## Acceptance criteria
 
-- [ ] AI asks questions and the child can respond via text
-- [ ] Wrong answers or "I don't get it" trigger alternative visual explanations
-- [ ] Topic switches work ("now teach me multiplication")
-- [ ] New topics draw in fresh canvas areas
-- [ ] Child has simplified toolbar (freehand, text, eraser)
-- [ ] Previous drawings remain accessible by scrolling
+- [x] AI asks questions and the child can respond via text
+- [x] Wrong answers or "I don't get it" trigger alternative visual explanations
+- [x] Topic switches work ("now teach me multiplication")
+- [x] New topics draw in fresh canvas areas
+- [x] Child has simplified toolbar (freehand, text, eraser)
+- [x] Previous drawings remain accessible by scrolling
 
 ## Files
 

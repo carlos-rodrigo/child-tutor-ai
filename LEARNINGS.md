@@ -149,3 +149,10 @@
 **Context:** Task 005 for canvas-tutor — wiring the Excalidraw frontend to `/api/tutor/teach`.
 **Learning:** On the client, `processDataStream()` can parse `toDataStreamResponse()` directly. For canvas rendering, consume `tool_result` parts instead of raw `tool_call_delta` fragments: the result contains the server-validated command returned by each tool `execute()`, so the browser only acts on normalized, trusted command shapes. Buffer text deltas until sentence boundaries before enqueueing speech, otherwise narration becomes choppy and over-fragmented.
 **Applies to:** Any future streamed AI UI in this project that mixes browser speech with structured tool execution.
+
+## Tutor Flow: Send per-turn lesson context so the model can move to fresh board areas reliably
+
+**Date:** 2026-03-29
+**Context:** Task 006 for canvas-tutor — adaptive teaching, topic switches, and answer turns on a persistent whiteboard.
+**Learning:** Conversation history alone is too weak for layout-sensitive tutoring. Sending structured per-turn lesson context (`interactionMode`, `currentTopic`, `boardArea`) lets the server strengthen the tutor prompt with concrete board-placement instructions, so topic switches and re-explanations can move to fresh canvas areas without erasing earlier work.
+**Applies to:** Future adaptive tutoring features, especially any turn that depends on viewport/layout state or child intent classification.

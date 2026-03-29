@@ -9,7 +9,7 @@ Started: 2026-03-28
 - [x] 003 - Add voice narration synchronized with canvas drawing
 - [x] 004 - Build AI teaching endpoint with streaming tool calls
 - [x] 005 - Connect frontend to AI streaming endpoint
-- [ ] 006 - Enable student interaction and adaptive teaching
+- [x] 006 - Enable student interaction and adaptive teaching
 - [ ] 007 - Polish for demo quality
 
 ## Patterns Discovered

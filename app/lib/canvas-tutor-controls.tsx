@@ -4,6 +4,7 @@ interface CanvasTutorControlsProps {
   input: string;
   canSubmit: boolean;
   errorMessage?: string | null;
+  isAwaitingResponse?: boolean;
   isMuted: boolean;
   isTeaching: boolean;
   showDemoFallback?: boolean;
@@ -30,6 +31,7 @@ export function CanvasTutorControls({
   input,
   canSubmit,
   errorMessage,
+  isAwaitingResponse = false,
   isMuted,
   isTeaching,
   onInputChange,
@@ -39,6 +41,15 @@ export function CanvasTutorControls({
   showDemoFallback = false,
   statusText,
 }: CanvasTutorControlsProps) {
+  const promptPlaceholder = isAwaitingResponse
+    ? "Type your answer here..."
+    : "Teach me fractions...";
+  const submitLabel = isTeaching
+    ? "Teaching…"
+    : isAwaitingResponse
+      ? "Answer"
+      : "Teach";
+
   return (
     <div
       style={{
@@ -77,15 +88,37 @@ export function CanvasTutorControls({
           gap: 10,
           padding: 14,
           borderRadius: 20,
-          background: "rgba(255,255,255,0.94)",
-          border: "1px solid rgba(15, 23, 42, 0.08)",
-          boxShadow: "0 16px 40px rgba(15, 23, 42, 0.12)",
+          background: isAwaitingResponse
+            ? "rgba(255,251,235,0.96)"
+            : "rgba(255,255,255,0.94)",
+          border: isAwaitingResponse
+            ? "1px solid rgba(245, 158, 11, 0.4)"
+            : "1px solid rgba(15, 23, 42, 0.08)",
+          boxShadow: isAwaitingResponse
+            ? "0 18px 44px rgba(245, 158, 11, 0.18)"
+            : "0 16px 40px rgba(15, 23, 42, 0.12)",
           backdropFilter: "blur(18px)",
         }}
       >
         <label htmlFor="canvas-tutor-input" style={srOnlyStyle}>
           Ask the tutor what to teach
         </label>
+
+        {isAwaitingResponse ? (
+          <div
+            style={{
+              justifySelf: "start",
+              padding: "6px 10px",
+              borderRadius: 999,
+              background: "rgba(245, 158, 11, 0.14)",
+              color: "#b45309",
+              fontSize: 13,
+              fontWeight: 700,
+            }}
+          >
+            Answer the tutor
+          </div>
+        ) : null}
 
         <div
           style={{
@@ -101,16 +134,20 @@ export function CanvasTutorControls({
             autoComplete="off"
             value={input}
             onChange={(event) => onInputChange(event.target.value)}
-            placeholder="Teach me fractions..."
+            placeholder={promptPlaceholder}
             style={{
               width: "100%",
               minWidth: 0,
               padding: "14px 16px",
               borderRadius: 14,
-              border: "1px solid rgba(15, 23, 42, 0.12)",
+              border: isAwaitingResponse
+                ? "2px solid rgba(245, 158, 11, 0.55)"
+                : "1px solid rgba(15, 23, 42, 0.12)",
               fontSize: 16,
               color: "#0f172a",
-              background: "rgba(248, 250, 252, 0.96)",
+              background: isAwaitingResponse
+                ? "rgba(255,255,255,0.98)"
+                : "rgba(248, 250, 252, 0.96)",
             }}
           />
 
@@ -145,7 +182,7 @@ export function CanvasTutorControls({
               cursor: canSubmit ? "pointer" : "not-allowed",
             }}
           >
-            {isTeaching ? "Teaching…" : "Teach"}
+            {submitLabel}
           </button>
         </div>
 

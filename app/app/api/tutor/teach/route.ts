@@ -3,7 +3,7 @@ import { convertToCoreMessages, streamText, type Message } from "ai";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { TUTOR_SYSTEM_PROMPT } from "@/lib/tutor-system-prompt";
+import { buildTutorSystemPrompt } from "@/lib/tutor-system-prompt";
 import { tutorTools } from "@/lib/tutor-tools";
 
 const DEFAULT_MODEL = "gpt-4o-mini";
@@ -23,8 +23,26 @@ const teachMessageSchema = z
   })
   .passthrough();
 
+const lessonContextSchema = z.object({
+  interactionMode: z.enum([
+    "child_question",
+    "child_answer",
+    "child_confused",
+    "topic_switch",
+  ]),
+  currentTopic: z.string().max(120).nullable().optional(),
+  boardArea: z
+    .object({
+      x: z.number().finite(),
+      y: z.number().finite(),
+      zoom: z.number().finite().min(0.1).max(1).optional(),
+    })
+    .optional(),
+});
+
 const teachRequestSchema = z.object({
   messages: z.array(teachMessageSchema).min(1).max(MAX_HISTORY_MESSAGES),
+  lessonContext: lessonContextSchema.optional(),
 });
 
 function toCoreMessages(messages: z.infer<typeof teachRequestSchema>["messages"]) {
@@ -77,7 +95,7 @@ export async function POST(request: Request) {
 
   const result = streamText({
     model: openai(process.env.OPENAI_MODEL ?? DEFAULT_MODEL),
-    system: TUTOR_SYSTEM_PROMPT,
+    system: buildTutorSystemPrompt(parsed.data.lessonContext),
     messages: toCoreMessages(parsed.data.messages),
     tools: tutorTools,
     maxSteps: MAX_TOOL_STEPS,

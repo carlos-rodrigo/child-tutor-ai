@@ -83,6 +83,8 @@ export async function consumeTutorDataStream({
 }: ConsumeTutorDataStreamOptions) {
   let assistantText = "";
   let speechBuffer = "";
+  let hasDeliveredCanvasCommand = false;
+  const deferredSpeechSegments: string[] = [];
 
   await processDataStream({
     stream,
@@ -94,15 +96,22 @@ export async function consumeTutorDataStream({
       const { segments, remainder } = takeCompletedSpeechSegments(speechBuffer);
       speechBuffer = remainder;
 
-      for (const segment of segments) {
-        onSpeechSegment?.(segment);
+      if (hasDeliveredCanvasCommand) {
+        flushSpeechSegments(segments, onSpeechSegment);
+        return;
       }
+
+      deferredSpeechSegments.push(...segments);
     },
     onToolResultPart(toolResultPart) {
       const command = extractCanvasCommandFromToolResult(toolResultPart);
-      if (command) {
-        onCommand?.(command);
+      if (!command) {
+        return;
       }
+
+      onCommand?.(command);
+      hasDeliveredCanvasCommand = true;
+      flushSpeechSegments(deferredSpeechSegments.splice(0), onSpeechSegment);
     },
     onErrorPart(errorPart) {
       throw new Error(errorPart);
@@ -111,8 +120,10 @@ export async function consumeTutorDataStream({
 
   const trailingSpeech = speechBuffer.trim();
   if (trailingSpeech) {
-    onSpeechSegment?.(trailingSpeech);
+    deferredSpeechSegments.push(trailingSpeech);
   }
+
+  flushSpeechSegments(deferredSpeechSegments, onSpeechSegment);
 
   const finalText = assistantText.trim();
   if (finalText !== assistantText) {
@@ -169,5 +180,14 @@ function pushSegment(segments: string[], candidate: string) {
   const segment = candidate.trim();
   if (segment) {
     segments.push(segment);
+  }
+}
+
+function flushSpeechSegments(
+  segments: string[],
+  onSpeechSegment?: (segment: string) => void
+) {
+  for (const segment of segments) {
+    onSpeechSegment?.(segment);
   }
 }

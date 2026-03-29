@@ -108,6 +108,41 @@ describe("consumeTutorDataStream", () => {
     );
   });
 
+  it("holds the opening narration until the first canvas command arrives", async () => {
+    const events: string[] = [];
+
+    await consumeTutorDataStream({
+      stream: createStream([
+        formatDataStreamPart("text", "Let’s learn fractions."),
+        formatDataStreamPart("tool_result", {
+          toolCallId: "tool-1",
+          result: {
+            ok: true,
+            command: {
+              type: "draw_shape",
+              shapeType: "rectangle",
+              x: 100,
+              y: 120,
+              width: 220,
+              height: 140,
+            },
+          },
+        }),
+      ]),
+      onSpeechSegment: (segment) => {
+        events.push(`speak:${segment}`);
+      },
+      onCommand: (command) => {
+        events.push(`command:${command.type}`);
+      },
+    });
+
+    expect(events).toEqual([
+      "command:draw_shape",
+      "speak:Let’s learn fractions.",
+    ]);
+  });
+
   it("flushes a trailing speech fragment when the stream ends without punctuation", async () => {
     const spoken: string[] = [];
 

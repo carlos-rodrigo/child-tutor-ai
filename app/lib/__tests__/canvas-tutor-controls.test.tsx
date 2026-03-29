@@ -90,4 +90,31 @@ describe("CanvasTutorControls", () => {
     expect(screen.getByText("Answer the tutor")).not.toBeNull();
     expect(screen.getByRole("button", { name: "Answer" })).toBeTruthy();
   });
+
+  it("shows offline + length guidance for demo-safe input", () => {
+    render(
+      <CanvasTutorControls
+        input={"a".repeat(280)}
+        canSubmit={false}
+        isMuted={false}
+        isOffline={true}
+        isTeaching={false}
+        maxInputLength={280}
+        statusText="Offline — waiting to reconnect."
+        onInputChange={() => undefined}
+        onSubmit={(event) => event.preventDefault()}
+        onToggleMute={() => undefined}
+      />
+    );
+
+    expect(screen.getByText("Offline — waiting to reconnect.")).not.toBeNull();
+    expect(screen.getByText("280 / 280")).not.toBeNull();
+    expect(
+      screen.getByLabelText("Ask the tutor what to teach").getAttribute("maxLength")
+    ).toBe("280");
+    expect(screen.getByRole("button", { name: "Teach" })).toHaveProperty(
+      "disabled",
+      true
+    );
+  });
 });

@@ -3,6 +3,7 @@ import { convertToCoreMessages, streamText, type Message } from "ai";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { MAX_TUTOR_INPUT_LENGTH } from "@/lib/tutor-constants";
 import { buildTutorSystemPrompt } from "@/lib/tutor-system-prompt";
 import { tutorTools } from "@/lib/tutor-tools";
 
@@ -83,6 +84,23 @@ export async function POST(request: Request) {
     );
   }
 
+  const oversizedUserPrompt = parsed.data.messages.some(
+    (message) =>
+      message.role === "user" &&
+      typeof message.content === "string" &&
+      message.content.trim().length > MAX_TUTOR_INPUT_LENGTH
+  );
+
+  if (oversizedUserPrompt) {
+    return NextResponse.json(
+      {
+        code: "invalid_request",
+        error: `User prompts must be ${MAX_TUTOR_INPUT_LENGTH} characters or less.`,
+      },
+      { status: 400 }
+    );
+  }
+
   if (!process.env.OPENAI_API_KEY) {
     return NextResponse.json(
       {
@@ -93,19 +111,50 @@ export async function POST(request: Request) {
     );
   }
 
-  const result = streamText({
-    model: openai(process.env.OPENAI_MODEL ?? DEFAULT_MODEL),
-    system: buildTutorSystemPrompt(parsed.data.lessonContext),
-    messages: toCoreMessages(parsed.data.messages),
-    tools: tutorTools,
-    maxSteps: MAX_TOOL_STEPS,
-    toolCallStreaming: true,
-    temperature: 0.7,
-  });
+  try {
+    const result = streamText({
+      model: openai(process.env.OPENAI_MODEL ?? DEFAULT_MODEL),
+      system: buildTutorSystemPrompt(parsed.data.lessonContext),
+      messages: toCoreMessages(parsed.data.messages),
+      tools: tutorTools,
+      maxSteps: MAX_TOOL_STEPS,
+      toolCallStreaming: true,
+      temperature: 0.7,
+    });
 
-  return result.toDataStreamResponse({
-    headers: {
-      "X-Content-Type-Options": "nosniff",
-    },
-  });
+    return result.toDataStreamResponse({
+      headers: {
+        "X-Content-Type-Options": "nosniff",
+      },
+    });
+  } catch (error) {
+    const status = getErrorStatus(error);
+
+    if (status === 429) {
+      return NextResponse.json(
+        {
+          code: "rate_limited",
+          error: "The tutor is busy right now. Please wait a moment and try again.",
+        },
+        { status: 429 }
+      );
+    }
+
+    return NextResponse.json(
+      {
+        code: "provider_error",
+        error: "The tutor could not answer right now.",
+      },
+      { status: 503 }
+    );
+  }
+}
+
+function getErrorStatus(error: unknown) {
+  if (typeof error !== "object" || error === null) {
+    return null;
+  }
+
+  const status = "statusCode" in error ? error.statusCode : "status" in error ? error.status : null;
+  return typeof status === "number" ? status : null;
 }

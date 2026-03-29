@@ -156,3 +156,17 @@
 **Context:** Task 006 for canvas-tutor — adaptive teaching, topic switches, and answer turns on a persistent whiteboard.
 **Learning:** Conversation history alone is too weak for layout-sensitive tutoring. Sending structured per-turn lesson context (`interactionMode`, `currentTopic`, `boardArea`) lets the server strengthen the tutor prompt with concrete board-placement instructions, so topic switches and re-explanations can move to fresh canvas areas without erasing earlier work.
 **Applies to:** Future adaptive tutoring features, especially any turn that depends on viewport/layout state or child intent classification.
+
+## Streaming UX: Hold opening narration until the first whiteboard command lands
+
+**Date:** 2026-03-29
+**Context:** Task 007 for canvas-tutor — polishing speech pacing for the Excalidraw tutor.
+**Learning:** When AI narration starts streaming before the first drawing tool result arrives, browser speech can outrun the visuals and make the lesson feel desynced. Buffer completed speech sentences until the first validated canvas command is emitted, then flush them behind that command; if no drawing arrives, flush at end-of-stream so text-only turns still speak.
+**Applies to:** Any future streamed tutor or multimodal UI where narration and visual/tool output share the same response.
+
+## Resilience: Retry tutor fetches only for transient failures
+
+**Date:** 2026-03-29
+**Context:** Task 007 for canvas-tutor — adding demo-ready error handling around `/api/tutor/teach`.
+**Learning:** Keep retry logic in a small request helper and only retry statuses that can plausibly recover (`429`, `503`) plus browser `TypeError` network failures. Abort errors should escape immediately, and validation errors should never retry. This keeps the UI responsive without hammering the provider.
+**Applies to:** Any future client fetch path in this repo that talks to AI providers or flaky network services.

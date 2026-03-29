@@ -17,14 +17,26 @@ import { DEMO_COMMANDS, DEMO_DELAY_MS } from "@/lib/canvas-demo";
 import { commandToSkeleton, type CanvasCommand } from "@/lib/excalidraw-elements";
 import { createSpeechPlayer } from "@/lib/speech-player";
 import {
+  MAX_TUTOR_INPUT_LENGTH,
+  OFFLINE_TUTOR_STATUS_TEXT,
+} from "@/lib/tutor-constants";
+import {
+  readStoredMutePreference,
+  writeStoredMutePreference,
+} from "@/lib/tutor-preferences";
+import {
+  isRetryableNetworkError,
+  requestTutorResponse,
+} from "@/lib/tutor-request";
+import {
   classifyStudentTurn,
   createBoardArea,
   shouldAwaitStudentReply,
 } from "@/lib/tutor-session";
 import { consumeTutorDataStream } from "@/lib/tutor-stream";
 
-const VIEWPORT_ZOOM_FACTOR = 0.35;
-const VIEWPORT_ANIMATION_MS = 300;
+const VIEWPORT_ZOOM_FACTOR = 0.4;
+const VIEWPORT_ANIMATION_MS = 520;
 const DEFAULT_STATUS_TEXT = "Ask for a math lesson to begin.";
 const READY_STATUS_TEXT = "Ready for the next question.";
 const THINKING_STATUS_TEXT = "Thinking…";
@@ -78,17 +90,20 @@ export default function CanvasPage() {
   const speechPlayerRef = useRef<ReturnType<typeof createSpeechPlayer> | null>(null);
   const runningRef = useRef(false);
   const isMutedRef = useRef(false);
+  const hasLoadedMutePreferenceRef = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
   const messageCountRef = useRef(0);
   const boardAreaIndexRef = useRef(0);
   const activeTopicRef = useRef<string | null>(null);
   const awaitingStudentResponseRef = useRef(false);
+  const conversationLengthRef = useRef(0);
 
   const [conversation, setConversation] = useState<ConversationMessage[]>([]);
   const [input, setInput] = useState("");
   const [isCanvasReady, setIsCanvasReady] = useState(false);
   const [isTeaching, setIsTeaching] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [isOffline, setIsOffline] = useState(false);
   const [isAwaitingResponse, setIsAwaitingResponse] = useState(false);
   const [statusText, setStatusText] = useState(DEFAULT_STATUS_TEXT);
   const [transcript, setTranscript] = useState(DEFAULT_TRANSCRIPT_TEXT);
@@ -110,11 +125,50 @@ export default function CanvasPage() {
   }, []);
 
   useEffect(() => {
+    conversationLengthRef.current = conversation.length;
+  }, [conversation.length]);
+
+  useEffect(() => {
     isMutedRef.current = isMuted;
+
+    if (!hasLoadedMutePreferenceRef.current) {
+      return;
+    }
+
+    writeStoredMutePreference(isMuted);
   }, [isMuted]);
 
   useEffect(() => {
+    const storedMutePreference = readStoredMutePreference();
+    hasLoadedMutePreferenceRef.current = true;
+    isMutedRef.current = storedMutePreference;
+    setIsMuted(storedMutePreference);
+
+    const syncConnectionState = () => {
+      const nextIsOffline = typeof navigator !== "undefined" && !navigator.onLine;
+      setIsOffline(nextIsOffline);
+      setStatusText((current) => {
+        if (nextIsOffline) {
+          return OFFLINE_TUTOR_STATUS_TEXT;
+        }
+
+        if (current === OFFLINE_TUTOR_STATUS_TEXT) {
+          return conversationLengthRef.current > 0
+            ? READY_STATUS_TEXT
+            : DEFAULT_STATUS_TEXT;
+        }
+
+        return current;
+      });
+    };
+
+    syncConnectionState();
+    window.addEventListener("online", syncConnectionState);
+    window.addEventListener("offline", syncConnectionState);
+
     return () => {
+      window.removeEventListener("online", syncConnectionState);
+      window.removeEventListener("offline", syncConnectionState);
       abortControllerRef.current?.abort();
       queueRef.current?.reset();
       speechPlayerRef.current?.cancel();
@@ -232,6 +286,19 @@ export default function CanvasPage() {
         return;
       }
 
+      if (isOffline) {
+        setErrorMessage("You’re offline. Reconnect to continue the lesson.");
+        setStatusText(OFFLINE_TUTOR_STATUS_TEXT);
+        return;
+      }
+
+      if (prompt.length > MAX_TUTOR_INPUT_LENGTH) {
+        setErrorMessage(
+          `Keep prompts under ${MAX_TUTOR_INPUT_LENGTH} characters so the tutor can respond quickly.`
+        );
+        return;
+      }
+
       const queue = getQueue();
       const studentTurn = classifyStudentTurn({
         prompt,
@@ -278,11 +345,7 @@ export default function CanvasPage() {
       }
 
       try {
-        const response = await fetch("/api/tutor/teach", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+        const response = await requestTutorResponse({
           body: JSON.stringify({
             messages: nextConversation,
             lessonContext: {
@@ -298,7 +361,11 @@ export default function CanvasPage() {
           const errorPayload = await readErrorPayload(response);
           setAwaitingResponseState(false);
           setErrorMessage(errorPayload.message);
-          setStatusText("Tutor unavailable right now.");
+          setStatusText(
+            errorPayload.code === "rate_limited"
+              ? "Tutor is busy right now."
+              : "Tutor unavailable right now."
+          );
           setTranscript(errorPayload.message);
           setShowDemoFallback(errorPayload.code === "missing_api_key");
           queue.clear();
@@ -340,11 +407,11 @@ export default function CanvasPage() {
         );
       } catch (error) {
         if (!controller.signal.aborted) {
-          const message = getErrorMessage(error);
+          const message = getFriendlyNetworkMessage(error, isOffline);
           setAwaitingResponseState(false);
           setErrorMessage(message);
           setTranscript(message);
-          setStatusText("Something went wrong.");
+          setStatusText(isOffline ? OFFLINE_TUTOR_STATUS_TEXT : "Something went wrong.");
           queue.clear();
           getSpeechPlayer().cancel();
         }
@@ -357,7 +424,14 @@ export default function CanvasPage() {
         setIsTeaching(false);
       }
     },
-    [conversation, getQueue, getSpeechPlayer, input, setAwaitingResponseState]
+    [
+      conversation,
+      getQueue,
+      getSpeechPlayer,
+      input,
+      isOffline,
+      setAwaitingResponseState,
+    ]
   );
 
   return (
@@ -431,11 +505,18 @@ export default function CanvasPage() {
 
       <CanvasTutorControls
         input={input}
-        canSubmit={isCanvasReady && !isTeaching && input.trim().length > 0}
+        canSubmit={
+          isCanvasReady &&
+          !isTeaching &&
+          input.trim().length > 0 &&
+          input.trim().length <= MAX_TUTOR_INPUT_LENGTH
+        }
         errorMessage={errorMessage}
         isAwaitingResponse={isAwaitingResponse}
         isMuted={isMuted}
+        isOffline={isOffline}
         isTeaching={isTeaching}
+        maxInputLength={MAX_TUTOR_INPUT_LENGTH}
         showDemoFallback={showDemoFallback}
         statusText={statusText}
         onInputChange={setInput}
@@ -480,7 +561,11 @@ async function readErrorPayload(response: Response) {
   }
 }
 
-function getErrorMessage(error: unknown) {
+function getFriendlyNetworkMessage(error: unknown, isOffline: boolean) {
+  if (isOffline || isRetryableNetworkError(error)) {
+    return "The network is unstable right now. Reconnect and try again.";
+  }
+
   return error instanceof Error ? error.message : "The tutor could not answer right now.";
 }
 

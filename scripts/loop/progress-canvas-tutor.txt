@@ -15,6 +15,8 @@ Feature: canvas-tutor
 - Treat `SpeechSynthesis` as unreliable I/O: wrap utterances in a cancelable promise with timeout + sync-error handling so narration can never deadlock the queue
 - On the client, parse `toDataStreamResponse()` with `processDataStream()` and drive the canvas from streamed `tool_result` acknowledgements so only server-validated commands reach Excalidraw; buffer text deltas into sentence-sized speech queue items for natural narration
 - For adaptive tutoring turns, send structured `lessonContext` (`interactionMode`, `currentTopic`, `boardArea`) with the request so the server can force fresh-board-area guidance without trusting ad-hoc text prompts
+- Buffer opening narration until the first validated canvas command arrives; it keeps browser speech from outrunning Excalidraw while still allowing text-only turns to speak at end-of-stream
+- Keep tutor request retries in a dedicated helper and only retry transient failures (`429`, `503`, network `TypeError`) so the UI recovers gracefully without retrying bad user input
 
 ---
 
@@ -79,5 +81,18 @@ Task ID: 006
 - **Learnings for future iterations:**
   - Layout-sensitive tutoring works better when the client sends explicit board-area context instead of hoping the model infers where to draw next
   - A lightweight UI cue (`Your turn`, answer placeholder, answer button) is enough to make question/response turns feel conversational without adding a chat panel
+
+---
+
+## 2026-03-29 - Polish for demo quality
+
+Task ID: 007
+
+- Buffered opening narration behind the first streamed drawing command so speech no longer gets ahead of the whiteboard, and added smoother viewport timing for the Excalidraw camera
+- Added demo-ready resilience: retry/backoff for transient tutor failures, friendly rate-limit/provider errors, offline detection, prompt-length limits, and persisted mute preference
+- Refined the floating controls with cleaner status states, character count guidance, and added tests for stream pacing, retry helpers, storage preferences, route validation, and offline UI polish
+- **Learnings for future iterations:**
+  - Streamed narration feels much more natural when the client waits for the first validated visual command before speaking the opening sentence
+  - Shared client/server limits (like prompt length) prevent the UI and API from drifting into inconsistent behavior during demos
 
 ---

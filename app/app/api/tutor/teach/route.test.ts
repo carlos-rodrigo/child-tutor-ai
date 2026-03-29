@@ -135,4 +135,48 @@ describe("POST /api/tutor/teach", () => {
     expect(body).toMatchObject({ code: "invalid_request" });
     expect(streamTextMock).not.toHaveBeenCalled();
   });
+
+  it("rejects user prompts that exceed the demo input limit", async () => {
+    const request = new Request("http://localhost/api/tutor/teach", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        messages: [
+          {
+            id: "msg-1",
+            role: "user",
+            content: "x".repeat(281),
+          },
+        ],
+      }),
+    });
+
+    const response = await POST(request);
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body).toMatchObject({ code: "invalid_request" });
+    expect(streamTextMock).not.toHaveBeenCalled();
+  });
+
+  it("maps provider rate limits to a retryable API response", async () => {
+    process.env.OPENAI_API_KEY = "test-key";
+    streamTextMock.mockImplementation(() => {
+      throw Object.assign(new Error("Too many requests"), { statusCode: 429 });
+    });
+
+    const request = new Request("http://localhost/api/tutor/teach", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        messages: [{ id: "msg-1", role: "user", content: "teach me fractions" }],
+      }),
+    });
+
+    const response = await POST(request);
+    const body = await response.json();
+
+    expect(response.status).toBe(429);
+    expect(body).toMatchObject({ code: "rate_limited" });
+  });
 });

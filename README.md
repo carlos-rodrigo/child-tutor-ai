@@ -21,3 +21,26 @@ It is a **tutor that talks and draws**.
 
 - `prd.md` — product requirements
 - `design.md` — technical design
+
+## Development
+
+The actual Next.js app lives in `app/`.
+
+Run commands from there:
+
+```bash
+cd app
+npm install
+npm run dev
+npm run build
+```
+
+## Vercel deployment
+
+In Vercel project settings, set:
+
+- **Root Directory:** `app`
+- **Framework Preset:** `Next.js`
+- **Output Directory:** leave empty / default
+
+Do not deploy this repo from the repository root. The production app is the `app/` folder.

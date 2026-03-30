@@ -3,8 +3,8 @@
   "private": true,
   "scripts": {
     "postinstall": "npm --prefix app install",
-    "build": "npm --prefix app run build",
-    "vercel-build": "npm --prefix app run build",
+    "build": "npm --prefix app run build && node scripts/sync-next-build.mjs",
+    "vercel-build": "npm run build",
     "test": "npm --prefix app run test",
     "typecheck": "npm --prefix app run typecheck",
     "lint": "npm --prefix app run lint"

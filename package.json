@@ -2,7 +2,7 @@
   "name": "child-tutor-ai-root",
   "private": true,
   "scripts": {
-    "postinstall": "npm --prefix app install",
+    "postinstall": "npm --prefix app install --legacy-peer-deps --no-audit --no-fund",
     "build": "npm --prefix app run build && node scripts/sync-next-build.mjs",
     "vercel-build": "npm run build",
     "test": "npm --prefix app run test",

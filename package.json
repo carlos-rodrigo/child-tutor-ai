@@ -2,6 +2,7 @@
   "name": "child-tutor-ai-root",
   "private": true,
   "scripts": {
+    "postinstall": "npm --prefix app install",
     "build": "npm --prefix app run build",
     "vercel-build": "npm --prefix app run build",
     "test": "npm --prefix app run test",

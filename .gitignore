@@ -1,1 +1,3 @@
 scripts/loop/*.log
+/.next/
+/package-lock.json

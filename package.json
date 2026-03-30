@@ -1,0 +1,11 @@
+{
+  "name": "child-tutor-ai-root",
+  "private": true,
+  "scripts": {
+    "build": "npm --prefix app run build",
+    "vercel-build": "npm --prefix app run build",
+    "test": "npm --prefix app run test",
+    "typecheck": "npm --prefix app run typecheck",
+    "lint": "npm --prefix app run lint"
+  }
+}
